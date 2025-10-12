@@ -1,0 +1,22 @@
+/* Убираем все отступы и поля */
+*{
+    margin: 0;
+    padding: 0%;
+    box-sizing: border-box;
+
+}
+/* Делаем картинки адаптивными */
+img {
+max-width: 100%;
+height: auto;
+}
+/* Сбрасываем оформления списков */
+ul, ol {
+    list-style: none;
+}
+/* Сбрасываем оформление ссылок */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
