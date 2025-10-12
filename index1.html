@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Калькулятор ИМТ</title>
+<style>
+  body {
+    font-family: system-ui, Arial, sans-serif;
+    font-size: normal;
+    font-weight: 400;
+    font-style: italic;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #f5fff2;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: min(480px, 90%);
+    padding: 32px 24px;
+    border: 1px solid #ccc;
+    border-radius: 16px;
+    background: #c9d4ef;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  }
+
+  h1 {
+    margin: 0;
+  }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .row div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: none;
+    width: 45%;
+  }
+
+  input,
+  button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+
+  input {
+    border: 1px solid #666;
+  }
+
+  button {
+    border: none;
+    background: #6dadf6;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  button:hover {
+    background: #3d7dd3;
+  }
+
+  .out {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #ffffff;
+    width: 100%;
+    text-align: center;
+    font-size: 18px;
+  }
+</style>
+
+<body>
+  <main class="card">
+    <h1>Калькулятор ИМТ</h1>
+
+    <div class="row">
+      <div>
+        <label for="w">Вес (кг)</label>
+        <input id="w" type="number" step="0.1" placeholder="например, 62.5">
+      </div>
+      <div>
+        <label for="h">Рост (см)</label>
+        <input id="h" type="number" step="0.1" placeholder="например, 168">
+      </div>
+    </div>
+
+    <button id="go" type="button">Посчитать</button>
+    <div id="out" class="out">Результат появится здесь</div>
+  </main>
+
+  <script>
+    document.getElementById("go").addEventListener("click", calc);
+
+    function calc() {
+      const w = parseFloat((document.getElementById('w').value || '').replace(',', '.'));
+      const hcm = parseFloat((document.getElementById('h').value || '').replace(',', '.'));
+      const out = document.getElementById('out');
+
+      if (!(w > 0) || !(hcm > 0)) {
+        out.textContent = "Проверьте ввод: нужны положительные числа.";
+        return;
+      }
+
+      const hm = hcm / 100;
+      const bmi = w / (hm * hm);
+      const category =
+        bmi <= 18.5 ? "Недостаточный вес" :
+        bmi < 25 ? "Нормальный вес" :
+        bmi < 30 ? "Избыточный вес" :
+        "Ожирение";
+
+      out.innerHTML = `<b>ИМТ: ${(Math.round(bmi * 10) / 10).toFixed(1)}</b><br>${category}`;
+    }
+  </script>
+</body>
+</html>
