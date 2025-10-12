@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мои демо-страницы</title>
+<style>
+  :root{--bg:#0b0c0f;--panel:#151821;--text:#e7e9ee;--muted:#98a2b3;--accent:#7c5cff;--ok:#16a34a;--alt:#0ea5e9}
+  body{margin:0;min-height:100svh;display:grid;place-items:center;background:radial-gradient(70% 80% at 20% 0%, rgba(124,92,255,.12), transparent 60%),var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .card{width:min(720px,92%);background:var(--panel);border:1px solid #232838;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  h1{margin:0 0 8px;font-size:clamp(22px,3.5vw,28px)}
+  p{margin:0 0 18px;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  a.btn{display:block;text-decoration:none;padding:14px 16px;border-radius:12px;font-weight:600;text-align:center}
+  .btn.calc{background:var(--accent);color:#fff}
+  .btn.imt{background:var(--ok);color:#fff}
+  .btn.garden{background:var(--alt);color:#fff}
+  footer{margin-top:14px;color:var(--muted);font-size:13px;text-align:center}
+</style>
+<main class="card">
+  <h1>Мои демо-страницы</h1>
+  <p>Выберите, что открыть:</p>
+  <div class="grid">
+    <a class="btn calc"   href="calc/">Простой калькулятор</a>
+    <a class="btn imt"    href="imt/">Калькулятор ИМТ</a>
+    <!-- если папка с пробелом, лучше %20 -->
+    <a class="btn garden" href="garden%20land/">Garden Land</a>
+  </div>
+  <footer>GitHub Pages · автообновление после каждого коммита</footer>
+</main>
+</html>
