@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "budget_spent_usd": {
+      "type": "number"
+    },
+    "contributors": {
+      "items": {
+        "$ref": "#/definitions/AggregationContributor"
+      },
+      "type": "array"
+    },
+    "p_final": {
+      "type": "number"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "tau": {
+      "type": "number"
+    },
+    "uncertainty": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "contributors"
+  ],
+  "title": "AggregationResult",
+  "type": "object"
+}

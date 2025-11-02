@@ -1,0 +1,55 @@
+mode: paper
+dry_run: true
+sell_enabled: true
+assets:
+  tickers: ["BTCUSDT"]
+  adv_usd_table: { BTCUSDT: 9e9 }
+  top_depth_usd: { BTCUSDT: 5e6 }
+llm:
+  budget_usd_per_min: 0.10
+  token_budget_per_tick: 1000
+  aggregator_tau: 1.0
+  max_on_demand_features: 2
+  stages:
+    A: { max_tokens: 400, temperature: 0.2 }
+    B: { max_tokens: 400, temperature: 0.2 }
+risk_gate:
+  limits: { per_trade_loss_pct: 1.0, per_day_loss_pct: 5.0, max_drawdown_pct: 20.0 }
+  sizing: { pos_cap_per_asset_pct: 1.0, cluster_cap_pct: 2.0 }
+  market: { max_spread_bps: 20 }
+  cooldowns: { after_stop_sec: 60, min_between_trades_sec: 10 }
+  circuit_breakers: { ece_threshold: 0.5, hitrate_drop_window: 10 }
+  pnl_breaker: { day_loss_pct: 1.0, week_loss_pct: 2.0 }
+execution:
+  ttl_sec_range: [30, 60]
+  price_bands_atr_mult: 2.0
+  minimal_notional_usd: 10
+  low_top_depth_usd: 100000
+  strategies: [POST_ONLY, IOC]
+  strategy_thresholds: { post_only_spread_frac: 0.5, strong_signal_z: 1.5 }
+  post_only_queue_penalty_bps: 0.5
+monitoring:
+  metrics_port: 9107
+  health_interval_sec: 15
+  alert_sink: telegram
+  alert_min_level: info
+  alert_dedup_window_sec: 60
+exchange:
+  name: binance_spot
+  base_url: https://api.binance.com
+  ws_url: wss://stream.binance.com:9443/stream
+  recv_window_ms: 5000
+  account_type: spot
+  time_sync_sec: 60
+  precision_cache_ttl_sec: 600
+  api_key_env: BINANCE_API_KEY
+  api_secret_env: BINANCE_API_SECRET
+telegram:
+  bot_token_env: TELEGRAM_BOT_TOKEN
+  chat_id_env: TELEGRAM_CHAT_ID
+symbol_map: { BTCUSDT: "BTCUSDT" }
+units: { tolerance_bps: 1.0, enforce: true }
+schemas: { version: 1 }
+storage_dir: data
+decision_log: decisions.jsonl
+sqlite_path: arena.sqlite3

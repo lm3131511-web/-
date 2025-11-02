@@ -1,0 +1,31 @@
+{
+  "properties": {
+    "approved": {
+      "type": "boolean"
+    },
+    "circuit_breaker_tripped": {
+      "type": "boolean"
+    },
+    "cooldown_active": {
+      "type": "boolean"
+    },
+    "limit_check": {
+      "type": "object"
+    },
+    "pnl_breaker_tripped": {
+      "type": "boolean"
+    },
+    "reason": {
+      "nullable": true,
+      "type": "string"
+    },
+    "schema_meta": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "approved"
+  ],
+  "title": "RiskGateApproval",
+  "type": "object"
+}

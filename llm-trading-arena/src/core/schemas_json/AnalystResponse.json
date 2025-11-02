@@ -1,0 +1,47 @@
+{
+  "properties": {
+    "completion_tokens": {
+      "type": "integer"
+    },
+    "decision_confidence": {
+      "type": "number"
+    },
+    "features": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "latency_ms": {
+      "type": "number"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "prompt_tokens": {
+      "type": "integer"
+    },
+    "reasoning": {
+      "nullable": true,
+      "type": "string"
+    },
+    "recommended_action": {
+      "type": "string"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "stage": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "stage",
+    "prompt_tokens",
+    "completion_tokens",
+    "latency_ms",
+    "recommended_action"
+  ],
+  "title": "AnalystResponse",
+  "type": "object"
+}

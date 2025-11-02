@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "created_at": {
+      "type": "number"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "operator": {
+      "type": "string"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "snapshot_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "created_at",
+    "snapshot_id",
+    "mode"
+  ],
+  "title": "AuditInfo",
+  "type": "object"
+}

@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "p_final": {
+      "type": "number"
+    },
+    "reasoning": {
+      "type": "string"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "side": {
+      "type": "string"
+    },
+    "strength": {
+      "type": "number"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "uncertainty": {
+      "type": "number"
+    },
+    "z_score": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "symbol",
+    "side",
+    "strength",
+    "z_score",
+    "reasoning"
+  ],
+  "title": "Signal",
+  "type": "object"
+}

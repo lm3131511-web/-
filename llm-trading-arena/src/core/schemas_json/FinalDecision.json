@@ -1,0 +1,46 @@
+{
+  "properties": {
+    "aggregation": {
+      "$ref": "#/definitions/AggregationResult"
+    },
+    "analyst": {
+      "title": "analyst"
+    },
+    "audit": {
+      "$ref": "#/definitions/AuditInfo"
+    },
+    "execution": {
+      "title": "execution"
+    },
+    "reason": {
+      "nullable": true,
+      "type": "string"
+    },
+    "risk_gate": {
+      "$ref": "#/definitions/RiskGateApproval"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "signal": {
+      "$ref": "#/definitions/Signal"
+    },
+    "status": {
+      "enum": [
+        "approved",
+        "rejected"
+      ]
+    }
+  },
+  "required": [
+    "status",
+    "analyst",
+    "aggregation",
+    "signal",
+    "risk_gate",
+    "execution",
+    "audit"
+  ],
+  "title": "FinalDecision",
+  "type": "object"
+}

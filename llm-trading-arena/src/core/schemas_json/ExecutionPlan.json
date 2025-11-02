@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "legs": {
+      "items": {
+        "$ref": "#/definitions/ExecutionLeg"
+      },
+      "type": "array"
+    },
+    "minimal_notional_usd": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "post_only_queue_penalty_bps": {
+      "type": "number"
+    },
+    "schema_meta": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "legs"
+  ],
+  "title": "ExecutionPlan",
+  "type": "object"
+}
