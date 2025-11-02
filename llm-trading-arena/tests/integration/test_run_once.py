@@ -1,10 +1,7 @@
-from __future__ import annotations
-
 import asyncio
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
 from urllib.request import urlopen
 
 import pytest
@@ -21,24 +18,45 @@ def test_run_once_writes_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
             update={
                 "monitoring": config.monitoring.model_copy(update={"metrics_port": 0}),
                 "mode": "shadow",
+                "storage_dir": str(tmp_path),
+                "logging": config.logging.model_copy(
+                    update={
+                        "paths": config.logging.paths.model_copy(
+                            update={
+                                "decisions": str(tmp_path / "decisions.jsonl"),
+                                "execution": str(tmp_path / "execution.jsonl"),
+                                "audit": str(tmp_path / "audit.jsonl"),
+                                "alerts": str(tmp_path / "alerts.jsonl"),
+                            }
+                        )
+                    }
+                ),
             }
         )
-        config.model_extra["storage_dir"] = str(tmp_path)
 
-        async def fake_start(self: Any) -> None:
+        async def fake_start(self) -> None:  # pragma: no cover - setup shim
             self._http = object()
 
-        async def fake_stop(self: Any) -> None:
+        async def fake_stop(self) -> None:  # pragma: no cover - teardown shim
             return None
 
-        async def fake_run(self: Any, market_snapshot: dict[str, float]) -> AnalystResponse:
+        async def fake_run(self, market_snapshot: dict[str, float]) -> AnalystResponse:
             return AnalystResponse(
                 stage="A",
+                provider="deepseek",
                 prompt_tokens=100,
                 completion_tokens=10,
                 latency_ms=5.0,
-                decision_confidence=0.6,
-                recommended_action="BUY",
+                direction="BUY",
+                strategy="POST_ONLY",
+                confidence=0.65,
+                urgency=0.4,
+                size_hint_frac=0.1,
+                ttl_hint_sec=45,
+                price_band_hint=None,
+                uncertainty_hints=["test"],
+                requested_features=[],
+                reliability=0.7,
                 reasoning="",
             )
 
@@ -51,17 +69,17 @@ def test_run_once_writes_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         arena.adapter.publish_mock_tick({"bid": 100.0, "ask": 100.1, "volatility": 0.01})
         await arena.run_once()
 
-        jsonl_path = Path(tmp_path) / "decisions.jsonl"
-        assert jsonl_path.exists()
-        with jsonl_path.open() as handle:
+        decisions_path = Path(config.logging.paths.decisions)
+        assert decisions_path.exists()
+        with decisions_path.open() as handle:
             lines = handle.readlines()
         assert len(lines) == 1
         data = json.loads(lines[0])
         assert data["status"] in {"approved", "rejected"}
 
-        sqlite_path = Path(tmp_path) / "arena.sqlite3"
+        sqlite_path = Path(config.storage_dir) / config.sqlite_path
         conn = sqlite3.connect(sqlite_path)
-        cur = conn.execute("SELECT COUNT(*) FROM final_decisions")
+        cur = conn.execute("SELECT COUNT(*) FROM decisions")
         assert cur.fetchone()[0] == 1
         conn.close()
 
@@ -72,6 +90,7 @@ def test_run_once_writes_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         with urlopen(f"http://127.0.0.1:{port}/health") as resp:
             health = json.loads(resp.read())
         assert health["ready"] is True
+        assert "kill_switch_state" in health
 
         await arena.stop()
 

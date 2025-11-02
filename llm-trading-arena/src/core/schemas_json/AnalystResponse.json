@@ -3,44 +3,79 @@
     "completion_tokens": {
       "type": "integer"
     },
-    "decision_confidence": {
+    "confidence": {
       "type": "number"
     },
-    "features": {
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
+    "direction": {
+      "enum": [
+        "BUY",
+        "SELL",
+        "FLAT"
+      ]
     },
     "latency_ms": {
       "type": "number"
     },
-    "metadata": {
-      "type": "object"
+    "price_band_hint": {
+      "title": "price_band_hint"
     },
     "prompt_tokens": {
       "type": "integer"
+    },
+    "provider": {
+      "type": "string"
     },
     "reasoning": {
       "nullable": true,
       "type": "string"
     },
-    "recommended_action": {
-      "type": "string"
+    "reliability": {
+      "type": "number"
+    },
+    "requested_features": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
     },
     "schema_meta": {
       "type": "object"
     },
+    "size_hint_frac": {
+      "type": "number"
+    },
     "stage": {
       "type": "string"
+    },
+    "strategy": {
+      "enum": [
+        "POST_ONLY",
+        "IOC",
+        "POV",
+        "TWAP"
+      ]
+    },
+    "ttl_hint_sec": {
+      "title": "ttl_hint_sec"
+    },
+    "uncertainty_hints": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "urgency": {
+      "type": "number"
     }
   },
   "required": [
     "stage",
+    "provider",
     "prompt_tokens",
     "completion_tokens",
     "latency_ms",
-    "recommended_action"
+    "direction",
+    "strategy"
   ],
   "title": "AnalystResponse",
   "type": "object"

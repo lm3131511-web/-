@@ -1,5 +1,8 @@
 {
   "properties": {
+    "budget_left_usd": {
+      "type": "number"
+    },
     "budget_spent_usd": {
       "type": "number"
     },
@@ -9,21 +12,31 @@
       },
       "type": "array"
     },
+    "degradation_mode": {
+      "type": "string"
+    },
     "p_final": {
       "type": "number"
+    },
+    "reliability_scores": {
+      "type": "object"
     },
     "schema_meta": {
       "type": "object"
     },
-    "tau": {
+    "tau_used": {
       "type": "number"
     },
     "uncertainty": {
       "type": "number"
+    },
+    "weights": {
+      "type": "object"
     }
   },
   "required": [
-    "contributors"
+    "contributors",
+    "degradation_mode"
   ],
   "title": "AggregationResult",
   "type": "object"

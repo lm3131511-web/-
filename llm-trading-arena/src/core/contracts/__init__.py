@@ -6,7 +6,7 @@ from typing import Iterable, Type
 
 from src.vendor.pydantic import BaseModel
 
-from .analyst import AnalystResponse
+from .analyst import AnalystResponse, PriceBandHint
 from .aggregation import AggregationResult, AggregationContributor
 from .execution import ExecutionLeg, ExecutionPlan, AuditInfo
 from .final_decision import FinalDecision, FinalDecisionStatus
@@ -15,6 +15,7 @@ from .signal import Signal
 
 __all__ = [
     "AnalystResponse",
+    "PriceBandHint",
     "AggregationResult",
     "AggregationContributor",
     "ExecutionLeg",

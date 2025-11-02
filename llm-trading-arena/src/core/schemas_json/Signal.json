@@ -1,35 +1,51 @@
 {
   "properties": {
+    "final_size_frac": {
+      "type": "number"
+    },
+    "kelly_base": {
+      "type": "number"
+    },
     "p_final": {
       "type": "number"
     },
     "reasoning": {
       "type": "string"
     },
+    "safety_multiplier": {
+      "type": "number"
+    },
     "schema_meta": {
       "type": "object"
     },
     "side": {
-      "type": "string"
+      "enum": [
+        "BUY",
+        "SELL",
+        "FLAT"
+      ]
     },
-    "strength": {
-      "type": "number"
+    "strategy": {
+      "enum": [
+        "POST_ONLY",
+        "IOC",
+        "POV",
+        "TWAP"
+      ]
     },
     "symbol": {
       "type": "string"
     },
     "uncertainty": {
       "type": "number"
-    },
-    "z_score": {
-      "type": "number"
     }
   },
   "required": [
     "symbol",
     "side",
-    "strength",
-    "z_score",
+    "strategy",
+    "kelly_base",
+    "safety_multiplier",
     "reasoning"
   ],
   "title": "Signal",

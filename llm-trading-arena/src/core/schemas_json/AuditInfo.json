@@ -1,29 +1,42 @@
 {
   "properties": {
-    "created_at": {
-      "type": "number"
+    "code_hash": {
+      "type": "string"
+    },
+    "degradation_mode": {
+      "type": "string"
     },
     "idempotency_key": {
+      "type": "string"
+    },
+    "kill_switch_state": {
       "type": "string"
     },
     "mode": {
       "type": "string"
     },
-    "operator": {
-      "type": "string"
-    },
     "schema_meta": {
       "type": "object"
     },
+    "seed": {
+      "type": "integer"
+    },
     "snapshot_id": {
+      "type": "string"
+    },
+    "ts_utc": {
       "type": "string"
     }
   },
   "required": [
     "idempotency_key",
-    "created_at",
+    "ts_utc",
     "snapshot_id",
-    "mode"
+    "mode",
+    "code_hash",
+    "seed",
+    "kill_switch_state",
+    "degradation_mode"
   ],
   "title": "AuditInfo",
   "type": "object"

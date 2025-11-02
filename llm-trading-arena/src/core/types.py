@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, Optional
+from typing import Optional
 
 
 class OrderSide(str, Enum):
@@ -13,6 +13,8 @@ class OrderSide(str, Enum):
 class ExecutionStrategy(str, Enum):
     POST_ONLY = "POST_ONLY"
     IOC = "IOC"
+    POV = "POV"
+    TWAP = "TWAP"
 
 
 class TradingMode(str, Enum):

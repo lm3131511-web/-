@@ -1,53 +1,89 @@
 mode: live
 dry_run: false
 sell_enabled: true
-# Inherit the same structure as canary but adjust sizes
+
 assets:
   tickers: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","ADAUSDT"]
-  adv_usd_table: { BTCUSDT: 9e9, ETHUSDT: 4e9, SOLUSDT: 1.2e9, XRPUSDT: 0.8e9, BNBUSDT: 1.5e9, ADAUSDT: 0.6e9 }
-  top_depth_usd: { BTCUSDT: 5e6, ETHUSDT: 3e6, SOLUSDT: 1e6, XRPUSDT: 0.8e6, BNBUSDT: 1.2e6, ADAUSDT: 0.5e6 }
+  adv_usd_table: { BTCUSDT: 9.0e9, ETHUSDT: 4.0e9, SOLUSDT: 1.2e9, XRPUSDT: 0.8e9, BNBUSDT: 1.5e9, ADAUSDT: 0.6e9 }
+  top_depth_usd: { BTCUSDT: 5.0e6, ETHUSDT: 3.0e6, SOLUSDT: 1.0e6, XRPUSDT: 0.8e6, BNBUSDT: 1.2e6, ADAUSDT: 0.5e6 }
+  clusters: { BTCUSDT: "majors", ETHUSDT: "majors", SOLUSDT: "alts", XRPUSDT: "alts", BNBUSDT: "majors", ADAUSDT: "alts" }
 
 llm:
-  budget_usd_per_min: 0.80
-  token_budget_per_tick: 4000
-  aggregator_tau: 0.8
+  budget_usd_per_min: 0.85
+  token_budget_per_tick: 3200
   max_on_demand_features: 3
+  aggregator_tau: 1.0
   stages:
-    A: { max_tokens: 900, temperature: 0.2 }
-    B: { max_tokens: 900, temperature: 0.2 }
-    C: { max_tokens: 1200, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20 }
+    A: { provider: "deepseek", max_tokens: 900, temperature: 0.2 }
+    B: { provider: "qwen", max_tokens: 900, temperature: 0.2 }
+    C: { provider: "claude", max_tokens: 1300, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20 }
+  reliability:
+    window: 700
+    lambda: 0.7
 
 risk_gate:
-  limits: { per_trade_loss_pct: 0.4, per_day_loss_pct: 1.5, max_drawdown_pct: 12.0 }
+  limits: { per_trade_loss_pct: 0.45, per_day_loss_pct: 1.5, max_drawdown_pct: 12.0 }
   sizing: { pos_cap_per_asset_pct: 1.5, cluster_cap_pct: 3.0 }
-  market: { max_spread_bps: 8 }
-  cooldowns: { after_stop_sec: 600, min_between_trades_sec: 120 }
-  circuit_breakers: { ece_threshold: 0.08, hitrate_drop_window: 200 }
+  market: { max_spread_bps: 10 }
+  cooldowns: { after_stop_sec: 900, min_between_trades_sec: 120 }
+  circuit_breakers: { ece_threshold: 0.06, hitrate_drop_window: 200 }
   pnl_breaker: { day_loss_pct: 0.2, week_loss_pct: 0.6 }
 
 execution:
-  ttl_sec_range: [30, 90]
-  price_bands_atr_mult: 1.8
-  minimal_notional_usd: 10
+  enforce_exchange_filters: true
+  ttl_sec_range: [20, 90]
+  price_bands_vol_mult: 1.8
+  minimal_notional_usd: 15
   low_top_depth_usd: 900000
-  strategies: [POST_ONLY, IOC]
-  strategy_thresholds: { post_only_spread_frac: 0.5, strong_signal_z: 1.2 }
-  post_only_queue_penalty_bps: 0.5
+  strategies: [POST_ONLY, IOC, POV, TWAP]
+  strategy_thresholds: { pov_adv_max_pct: 0.25, post_only_spread_frac: 0.4, strong_signal_z: 1.2 }
+  post_only_queue_penalty_bps: 0.4
+
+economics:
+  stress_slippage_prob: 0.3
+  normal: { k_vol_bps: 0.30, sigma: 0.55 }
+  stress: { k_vol_bps: 0.65, sigma: 1.0 }
+
+calendar:
+  timezone: UTC
+  blackout_windows:
+    - { tag: "FOMC", start_utc: "T-01:00", end_utc: "T+02:00", weekdays: [2,3,4] }
+    - { tag: "CPI", start_utc: "T-00:30", end_utc: "T+01:00", weekdays: [1,2,3,4,5] }
+  overrides: []
+  events_utc: []
+
+rolling_metrics:
+  windows:
+    - 200
+    - 500
+    - 1000
+  min_samples: 50
+
+order_management: { deduplication_window_sec: 300, retries: 2, idempotency_prefix: "arena-" }
+
+logging:
+  level: INFO
+  paths:
+    decisions: data/logs/decisions.jsonl
+    execution: data/logs/execution.jsonl
+    audit: data/logs/audit.jsonl
+    alerts: data/logs/alerts.jsonl
 
 monitoring:
-  metrics_port: 9109
+  metrics_port: 9108
   health_interval_sec: 15
   alert_sink: telegram
-  alert_min_level: info
+  alert_min_level: notice
   alert_dedup_window_sec: 60
 
 exchange:
   name: binance_spot
   base_url: https://api.binance.com
-  ws_url: wss://stream.binance.com:9443/stream
+  ws_url: wss://stream.binance.com:9443/ws
   recv_window_ms: 5000
   account_type: spot
   time_sync_sec: 60
+  max_clock_skew_ms: 1500
   precision_cache_ttl_sec: 600
   api_key_env: BINANCE_API_KEY
   api_secret_env: BINANCE_API_SECRET
@@ -56,9 +92,7 @@ telegram:
   bot_token_env: TELEGRAM_BOT_TOKEN
   chat_id_env: TELEGRAM_CHAT_ID
 
-symbol_map: { BTCUSDT: "BTCUSDT", ETHUSDT: "ETHUSDT", SOLUSDT: "SOLUSDT", XRPUSDT: "XRPUSDT", BNBUSDT: "BNBUSDT", ADAUSDT: "ADAUSDT" }
 units: { tolerance_bps: 1.0, enforce: true }
-schemas: { version: 1 }
+schemas: { version: 2 }
 storage_dir: data
-decision_log: decisions.jsonl
 sqlite_path: arena.sqlite3

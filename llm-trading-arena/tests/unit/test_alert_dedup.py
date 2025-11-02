@@ -30,7 +30,7 @@ def test_deduplication(monkeypatch: pytest.MonkeyPatch) -> None:
         os.environ["BOT"] = "token"
         os.environ["CHAT"] = "chat"
         dummy = DummyClient()
-        monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: dummy)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: dummy)
         await sink.publish("msg", level="info")
         await sink.publish("msg", level="info")
         assert len(dummy.calls) == 1

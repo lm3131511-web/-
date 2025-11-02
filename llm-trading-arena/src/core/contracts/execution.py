@@ -12,11 +12,12 @@ class ExecutionLeg(BaseModel):
     quantity: float
     price: Optional[float] = None
     ttl_seconds: Optional[int] = None
+    notional_usd: Optional[float] = None
 
 
 class ExecutionPlan(BaseModel):
     schema_meta: Dict[str, Any] = Field(
-        default_factory=lambda: {"name": "ExecutionPlan", "version": 1}
+        default_factory=lambda: {"name": "ExecutionPlan", "version": 2}
     )
     legs: list[ExecutionLeg]
     minimal_notional_usd: float = Field(ge=0.0)
@@ -31,13 +32,16 @@ class ExecutionPlan(BaseModel):
 
 class AuditInfo(BaseModel):
     schema_meta: Dict[str, Any] = Field(
-        default_factory=lambda: {"name": "AuditInfo", "version": 1}
+        default_factory=lambda: {"name": "AuditInfo", "version": 2}
     )
     idempotency_key: str
-    created_at: float
+    ts_utc: str
     snapshot_id: str
     mode: str
-    operator: str = "system"
+    code_hash: str
+    seed: int
+    kill_switch_state: str
+    degradation_mode: str
 
     model_config = {
         "extra": "forbid",
