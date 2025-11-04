@@ -15,6 +15,25 @@ class PriceBandHint(BaseModel):
     width_bps: float = Field(ge=0.0)
 
 
+class AnalystLLMOutput(BaseModel):
+    direction: Direction
+    strategy: Strategy
+    confidence: float = Field(ge=0.0, le=1.0)
+    urgency: float = Field(ge=0.0, le=1.0)
+    size_hint_frac: float = Field(ge=0.0)
+    ttl_hint_sec: int | None = Field(default=None, ge=0)
+    price_band_bps: float | None = Field(default=None, ge=0.0)
+    uncertainty_hints: List[str] = Field(default_factory=list)
+    requested_features: List[str] = Field(default_factory=list)
+    reliability: float = Field(default=0.5, ge=0.0, le=1.0)
+    reasoning: Optional[str] = None
+
+    model_config = {
+        "extra": "forbid",
+        "validate_assignment": True,
+    }
+
+
 class AnalystResponse(BaseModel):
     schema_meta: Dict[str, Any] = Field(
         default_factory=lambda: {"name": "AnalystResponse", "version": 3}
@@ -42,3 +61,17 @@ class AnalystResponse(BaseModel):
         "extra": "forbid",
         "validate_assignment": True,
     }
+
+
+def analyst_response_json_schema() -> Dict[str, Any]:
+    """Expose the strict JSON schema shared with LLM providers."""
+
+    return AnalystLLMOutput.model_json_schema()
+
+
+__all__ = [
+    "AnalystResponse",
+    "PriceBandHint",
+    "AnalystLLMOutput",
+    "analyst_response_json_schema",
+]

@@ -7,7 +7,10 @@ from typing import Any, Dict
 class MetricsRegistry:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._metrics: Dict[str, Any] = {
+        self._metrics: Dict[str, Any] = self._default_metrics()
+
+    def _default_metrics(self) -> Dict[str, Any]:
+        return {
             "schema_version": 1,
             "decisions_total": 0,
             "approved_ratio": 0.0,
@@ -22,6 +25,11 @@ class MetricsRegistry:
             "u_score": 0.0,
             "alert_queue_backlog": 0,
             "alert_queue_dropped_total": 0,
+            "prompt_versions": {},
+            "prompt_hashes": {},
+            "llm_json_repair_rate": 0.0,
+            "llm_completion_total": 0,
+            "llm_json_repairs_total": 0,
         }
 
     def set_metric(self, name: str, value: Any) -> None:
@@ -50,9 +58,30 @@ class MetricsRegistry:
             self._metrics["degradation_mode"] = mode
             self._metrics["u_score"] = u_score
 
+    def record_prompt(self, stage: str, version: str, prompt_hash: str) -> None:
+        with self._lock:
+            versions = dict(self._metrics.get("prompt_versions", {}))
+            versions[stage] = version
+            hashes = dict(self._metrics.get("prompt_hashes", {}))
+            hashes[stage] = prompt_hash
+            self._metrics["prompt_versions"] = versions
+            self._metrics["prompt_hashes"] = hashes
+
+    def record_llm_completion(self, *, repaired: bool) -> None:
+        with self._lock:
+            total = self._metrics.get("llm_completion_total", 0) + 1
+            repairs = self._metrics.get("llm_json_repairs_total", 0) + (1 if repaired else 0)
+            self._metrics["llm_completion_total"] = total
+            self._metrics["llm_json_repairs_total"] = repairs
+            self._metrics["llm_json_repair_rate"] = repairs / total if total else 0.0
+
     def snapshot(self) -> Dict[str, Any]:
         with self._lock:
             return dict(self._metrics)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._metrics = self._default_metrics()
 
 
 GLOBAL_METRICS = MetricsRegistry()

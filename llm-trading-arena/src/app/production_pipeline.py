@@ -71,7 +71,12 @@ class TradingArena:
         self.storage_paths = self._resolve_storage_paths(config)
         self._sqlite_conn: sqlite3.Connection | None = None
         self._http_server = None
-        self._stage_runners = build_stage_runners(config.llm)
+        stage_limits = {
+            "ttl_sec_range": list(config.execution.ttl_sec_range),
+            "max_spread_bps": config.execution.max_spread_bps,
+            "max_on_demand_features": config.llm.max_on_demand_features,
+        }
+        self._stage_runners = build_stage_runners(config.llm, limits=stage_limits)
         self._budget_manager = BudgetManager(config.llm, config.mode)
         self._degradation = DegradationController(config.llm.degradation)
         self._planner = ExecutionPlanner(
@@ -172,7 +177,7 @@ class TradingArena:
         enriched_snapshot.update(build_core_features(snapshot))
         enriched_snapshot.update(build_on_demand_features(snapshot, self.config.llm.max_on_demand_features))
 
-        responses = await self._run_stages(enriched_snapshot)
+        responses = await self._run_stages(enriched_snapshot, regime=regime, risk_level=risk_level)
         try:
             aggregation = aggregate_responses(
                 responses,
@@ -263,10 +268,16 @@ class TradingArena:
         self._kill_switch_state = "ON"
         self._health.kill_switch_state = "ON"
 
-    async def _run_stages(self, snapshot: Dict[str, float]) -> List[AnalystResponse]:
+    async def _run_stages(
+        self,
+        snapshot: Dict[str, float],
+        *,
+        regime: str,
+        risk_level: float,
+    ) -> List[AnalystResponse]:
         results: List[AnalystResponse] = []
         for runner in self._stage_runners:
-            result = await runner.run(snapshot)
+            result = await runner.run(snapshot, regime=regime, risk_level=risk_level)
             results.append(result)
             stage_cost = (result.prompt_tokens + result.completion_tokens) / 1000.0 * 0.002
             GLOBAL_METRICS.set_metric(f"llm_cost_per_min_{result.stage}", stage_cost)

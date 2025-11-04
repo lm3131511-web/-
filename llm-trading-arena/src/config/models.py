@@ -11,6 +11,7 @@ class LLMStageConfig(BaseModel):
     temperature: float
     min_uncertainty: float | None = None
     min_budget_left: float | None = None
+    prompt_version: str = "v1"
 
 
 class LLMReliabilityConfig(BaseModel):
@@ -59,6 +60,7 @@ class LLMConfig(BaseModel):
     adaptive_budgeting: AdaptiveBudgetingConfig
     emergency_provider: EmergencyProviderConfig
     degradation: DegradationConfig
+    mock_mode: bool = False
 
 
 class RiskGateConfig(BaseModel):

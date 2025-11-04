@@ -15,14 +15,15 @@ assets:
   clusters: { BTCUSDT: majors, ETHUSDT: majors, SOLUSDT: alts, XRPUSDT: alts, BNBUSDT: majors, ADAUSDT: alts }
 
 llm:
+  mock_mode: false
   per_mode_budget_usd_per_min: { paper: 0.10, shadow: 0.25, canary: 0.50, live: 0.75 }
   token_budget_per_tick: 3000
   max_on_demand_features: 3
   aggregator_tau: 1.0
   stages:
-    A: { provider: deepseek, max_tokens: 800, temperature: 0.2 }
-    B: { provider: qwen, max_tokens: 800, temperature: 0.2 }
-    C: { provider: claude, max_tokens: 1200, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20 }
+    A: { provider: deepseek, max_tokens: 800, temperature: 0.2, prompt_version: "v1" }
+    B: { provider: qwen, max_tokens: 800, temperature: 0.2, prompt_version: "v1" }
+    C: { provider: claude, max_tokens: 1200, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20, prompt_version: "v1" }
   reliability:
     window: 500
     lambda: 0.7

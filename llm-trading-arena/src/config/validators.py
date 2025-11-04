@@ -1,9 +1,26 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from .models import AppConfig
+
+_PROMPT_FILES = [
+    "system.md",
+    "analyst_A.md",
+    "analyst_B.md",
+    "analyst_C.md",
+]
+
+
+def _ensure_prompts_exist() -> None:
+    prompt_dir = Path(__file__).resolve().parents[2] / "prompts"
+    missing = [name for name in _PROMPT_FILES if not (prompt_dir / name).exists()]
+    if missing:
+        raise FileNotFoundError(f"missing prompt templates: {', '.join(missing)}")
 
 
 def validate_config(config: AppConfig) -> None:
+    _ensure_prompts_exist()
     if int(config.schemas.get("version", 0)) != 1:
         raise ValueError("unsupported schema version")
     ttl_min, ttl_max = config.execution.ttl_sec_range
@@ -15,3 +32,5 @@ def validate_config(config: AppConfig) -> None:
         raise ValueError("aggregator_tau must be positive")
     if config.monitoring.http.kill_rate_limit_per_min <= 0:
         raise ValueError("kill switch rate limit must be positive")
+    if not isinstance(config.llm.mock_mode, bool):
+        raise ValueError("llm.mock_mode must be boolean")
