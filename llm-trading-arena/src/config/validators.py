@@ -34,3 +34,9 @@ def validate_config(config: AppConfig) -> None:
         raise ValueError("kill switch rate limit must be positive")
     if not isinstance(config.llm.mock_mode, bool):
         raise ValueError("llm.mock_mode must be boolean")
+    provider_budgets = config.llm.budget_usd_per_min_per_provider
+    for stage_name, stage_cfg in config.llm.stages.items():
+        if stage_cfg.mode not in {"stub", "real"}:
+            raise ValueError(f"unsupported llm stage mode for {stage_name}")
+        if stage_name not in provider_budgets:
+            raise ValueError(f"missing per-provider budget for stage {stage_name}")

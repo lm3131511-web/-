@@ -17,6 +17,7 @@ async def _exercise() -> None:
     GLOBAL_METRICS.reset()
     config = load_config("config.sample.yaml")
     config.llm.mock_mode = False
+    config.llm.stages["A"].mode = "real"
     limits = {
         "ttl_sec_range": list(config.execution.ttl_sec_range),
         "max_spread_bps": config.execution.max_spread_bps,

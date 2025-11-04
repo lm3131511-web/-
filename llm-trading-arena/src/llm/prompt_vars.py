@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict
 
 _ALLOWED_KEYS = {
@@ -27,31 +28,32 @@ def _coerce_value(name: str, value: Any) -> Any:
         return _ALLOWED_KEYS[name]
 
 
+def _normalise_limit_value(value: Any) -> Any:
+    if isinstance(value, (int, float, str, bool)) or value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_normalise_limit_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _normalise_limit_value(val) for key, val in value.items()}
+    return str(value)
+
+
 def render_vars(
     market_snapshot: Dict[str, Any],
     limits: Dict[str, Any],
     regime: str,
     risk_level: float,
 ) -> str:
-    payload: Dict[str, Any] = {}
+    market_window: Dict[str, Any] = {}
     for key in _ALLOWED_KEYS:
-        payload[key] = _coerce_value(key, market_snapshot.get(key, _ALLOWED_KEYS[key]))
-    payload["regime"] = regime
-    payload["risk_level"] = float(risk_level)
-
-    lines: list[str] = []
-    for key in _ALLOWED_KEYS:
-        value = payload[key]
-        if isinstance(value, float):
-            lines.append(f"{key}: {value:.6f}")
-        else:
-            lines.append(f"{key}: {value}")
-    lines.append(f"regime: {payload['regime']}")
-    lines.append(f"risk_level: {payload['risk_level']:.4f}")
-    lines.append("limits:")
-    for name, value in limits.items():
-        lines.append(f"  {name}: {value}")
-    return "\n".join(lines)
+        market_window[key] = _coerce_value(key, market_snapshot.get(key, _ALLOWED_KEYS[key]))
+    payload = {
+        "market_window": market_window,
+        "regime": regime,
+        "risk_level": float(risk_level),
+        "limits": {k: _normalise_limit_value(v) for k, v in limits.items()},
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 
 
 __all__ = ["render_vars"]

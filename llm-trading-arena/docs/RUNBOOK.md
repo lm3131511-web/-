@@ -20,10 +20,10 @@
 
 ## Prompt update procedure
 
-1. Raise a PR with changes to `prompts/*.md` and ensure `pytest -q` passes, including the prompt hash guard.
-2. Verify locally that the new prompt hash surfaces in `/metrics.json` (`prompt_hashes.A/B/C`) before merging.
-3. After deploy, run `make run-shadow` for 2–4 hours and confirm `llm_json_repair_rate < 0.01` while prompt hashes remain stable.
-4. Promote to canary only after the shadow soak is clean and alerts remain deduplicated.
+1. Raise a PR with changes to `prompts/*.md`, run `pytest -q`, and confirm the prompt hash unit guard passes.
+2. Verify locally that `/metrics.json` exposes updated `prompt_versions` and `prompt_hashes` for the modified stages before merge.
+3. After deploy, run `make run-shadow` for 2–4 hours; ensure `llm_json_repair_rate < 0.01` and prompt hashes remain stable throughout the soak.
+4. Promote to canary only when the shadow soak is green and alert deduplication behaves as expected.
 
 ## Incident response
 

@@ -9,7 +9,7 @@ Focus: broad pattern discovery and hypothesis generation using the supplied raw 
 - Keep `size_hint_frac` conservative (≤ 0.25) unless depth and risk_level both look favourable.
 
 Checklist before emitting JSON:
-- [ ] Respected the regime guidance and venue limits from the YAML block.
+- [ ] Respected the regime guidance and venue limits from the JSON block.
 - [ ] TTL within declared bounds and urgency aligned with liquidity.
 - [ ] JSON structure matches the provided schema exactly.
 - [ ] If uncertain, returned FLAT with a clear uncertainty hint.

@@ -1,19 +1,25 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Type
 
 from .base import LLMProvider
 from .claude import ClaudeProvider
 from .deepseek import DeepSeekProvider
 from .qwen import QwenProvider
 
-
-def load_providers(mock_mode: bool = False) -> Dict[str, LLMProvider]:
-    providers: Dict[str, LLMProvider] = {}
-    for provider in (DeepSeekProvider(), QwenProvider(), ClaudeProvider()):
-        provider.set_mock_mode(mock_mode)
-        providers[provider.name] = provider
-    return providers
+_PROVIDER_FACTORIES: Dict[str, Type[LLMProvider]] = {
+    "deepseek": DeepSeekProvider,
+    "qwen": QwenProvider,
+    "claude": ClaudeProvider,
+}
 
 
-__all__ = ["LLMProvider", "load_providers"]
+def create_provider(name: str) -> LLMProvider:
+    try:
+        factory = _PROVIDER_FACTORIES[name]
+    except KeyError as exc:  # pragma: no cover - defensive guard
+        raise ValueError(f"unknown provider: {name}") from exc
+    return factory()
+
+
+__all__ = ["LLMProvider", "create_provider"]

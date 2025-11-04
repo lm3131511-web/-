@@ -278,9 +278,21 @@ class TradingArena:
         results: List[AnalystResponse] = []
         for runner in self._stage_runners:
             result = await runner.run(snapshot, regime=regime, risk_level=risk_level)
+            estimated_cost = (result.prompt_tokens + result.completion_tokens) / 1000.0 * 0.002
+            if not self._budget_manager.register_provider_spend(result.stage, estimated_cost):
+                GLOBAL_METRICS.inc_metric("budget_sentry_hits")
+                result = result.model_copy(
+                    update={
+                        "direction": "FLAT",
+                        "strategy": "POST_ONLY",
+                        "confidence": 0.0,
+                        "urgency": 0.0,
+                        "size_hint_frac": 0.0,
+                        "reliability": 0.0,
+                        "reasoning": "budget_guard_triggered",
+                    }
+                )
             results.append(result)
-            stage_cost = (result.prompt_tokens + result.completion_tokens) / 1000.0 * 0.002
-            GLOBAL_METRICS.set_metric(f"llm_cost_per_min_{result.stage}", stage_cost)
         return results
 
     def _select_primary_response(self, responses: Iterable[AnalystResponse]) -> AnalystResponse:
@@ -332,6 +344,8 @@ class TradingArena:
     ) -> FinalDecision:
         status: str = "approved" if approval.approved and execution else "rejected"
         GLOBAL_METRICS.record_decision(status == "approved")
+        if status == "approved" and signal is not None:
+            GLOBAL_METRICS.record_strategy_approval(signal.strategy)
         if not approval.approved:
             GLOBAL_METRICS.inc_metric("risk_blocked_total")
         snapshot_id = f"{snapshot['symbol']}:{snapshot.get('ts_utc', now_utc_iso())}"

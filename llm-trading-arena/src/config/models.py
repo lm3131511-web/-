@@ -7,6 +7,7 @@ from src.vendor.pydantic import BaseModel, Field
 
 class LLMStageConfig(BaseModel):
     provider: str
+    mode: str = Field(default="stub")
     max_tokens: int
     temperature: float
     min_uncertainty: float | None = None
@@ -51,6 +52,8 @@ class DegradationConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
+    budget_usd_per_min: float = Field(default=0.0, ge=0.0)
+    budget_usd_per_min_per_provider: Dict[str, float] = Field(default_factory=dict)
     per_mode_budget_usd_per_min: Dict[str, float]
     token_budget_per_tick: int
     max_on_demand_features: int

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 
@@ -23,4 +24,37 @@ def clear_prompt_cache() -> None:
     load_prompt.cache_clear()
 
 
-__all__ = ["load_prompt", "clear_prompt_cache"]
+def _format_template(template: str, variables: Dict[str, str]) -> str:
+    class _SafeDict(dict):
+        def __missing__(self, key: str) -> str:  # pragma: no cover - defensive
+            return "{" + key + "}"
+
+    return template.format_map(_SafeDict(variables))
+
+
+def build_compound_prompt(
+    *,
+    stage: str,
+    provider: str,
+    prompt_version: str,
+    regime: str,
+    variables_text: str,
+    schema: Dict[str, Any],
+) -> str:
+    system_text, stage_text = load_prompt(stage)
+    context = {
+        "stage": stage,
+        "provider": provider,
+        "prompt_version": prompt_version,
+        "regime": regime,
+        "features_json": variables_text,
+    }
+    system_section = _format_template(system_text, context)
+    stage_section = _format_template(stage_text, context)
+    schema_block = json.dumps(schema, indent=2, sort_keys=True)
+    return (
+        f"{system_section}\n\n{stage_section}\n\nVARIABLES:\n{variables_text}\n\nSTRICT_JSON_SCHEMA:\n{schema_block}"
+    )
+
+
+__all__ = ["load_prompt", "clear_prompt_cache", "build_compound_prompt"]

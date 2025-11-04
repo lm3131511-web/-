@@ -9,15 +9,16 @@ from typing import Any, Dict, List
 from ..config.models import LLMConfig
 from ..core.contracts import AnalystResponse, PriceBandHint, analyst_response_json_schema
 from ..monitoring.metrics import GLOBAL_METRICS
-from .prompt_loader import load_prompt
+from .prompt_loader import build_compound_prompt
 from .prompt_vars import render_vars
-from .providers import LLMProvider, load_providers
+from .providers import LLMProvider, create_provider
 
 
 @dataclass(slots=True)
 class StageConfig:
     name: str
     provider: LLMProvider
+    mode: str
     max_tokens: int
     temperature: float
     prompt_version: str
@@ -52,11 +53,26 @@ class StageRunner:
         except Exception as exc:  # pragma: no cover - defensive guard
             completion = self._fallback_payload(reason=str(exc))
             repaired = True
+            meta = {"cost_usd": 0.0}
         latency_ms = (time.perf_counter() - start) * 1000
         GLOBAL_METRICS.record_llm_completion(repaired=repaired)
 
-        prompt_tokens = max(1, len(prompt) // 4)
-        completion_tokens = max(1, len(json.dumps(completion, ensure_ascii=False)) // 4)
+        prompt_tokens = int(meta.get("prompt_tokens") or max(1, len(prompt) // 4))
+        completion_tokens = int(
+            meta.get("completion_tokens")
+            or max(1, len(json.dumps(completion, ensure_ascii=False)) // 4)
+        )
+        cost_usd = float(
+            meta.get("cost_usd")
+            or ((prompt_tokens + completion_tokens) / 1000.0 * 0.002)
+        )
+        GLOBAL_METRICS.record_llm_usage(
+            stage=self.config.name,
+            provider=self.config.provider.name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cost_usd=cost_usd,
+        )
         price_band_hint = None
         if completion.get("price_band_bps") is not None:
             price_band_hint = PriceBandHint(width_bps=float(completion["price_band_bps"]))
@@ -97,7 +113,6 @@ class StageRunner:
         risk_level: float,
         schema: Dict[str, Any],
     ) -> str:
-        system_text, stage_text = load_prompt(self.config.name)
         snapshot_vars = dict(market_snapshot)
         snapshot_vars.setdefault(
             "micro_volatility_q",
@@ -110,9 +125,13 @@ class StageRunner:
             self._count_on_demand_features(market_snapshot),
         )
         vars_block = render_vars(snapshot_vars, self.config.limits, regime, risk_level)
-        schema_block = json.dumps(schema, indent=2, sort_keys=True)
-        return (
-            f"{system_text}\n---\n{stage_text}\n---\nVARS:\n{vars_block}\n---\nSTRICT_JSON_SCHEMA:\n{schema_block}"
+        return build_compound_prompt(
+            stage=self.config.name,
+            provider=self.config.provider.name,
+            prompt_version=self.config.prompt_version,
+            regime=regime,
+            variables_text=vars_block,
+            schema=schema,
         )
 
     def _fallback_payload(self, *, reason: str | None = None) -> Dict[str, Any]:
@@ -141,12 +160,13 @@ class StageRunner:
 
 
 def build_stage_runners(config: LLMConfig, *, limits: Dict[str, Any]) -> List[StageRunner]:
-    providers = load_providers(mock_mode=config.mock_mode)
     runners: List[StageRunner] = []
     base_limits = dict(limits)
     base_limits.setdefault("max_on_demand_features", config.max_on_demand_features)
     for name, cfg in config.stages.items():
-        provider = providers[cfg.provider]
+        provider = create_provider(cfg.provider)
+        provider.set_mock_mode(config.mock_mode)
+        provider.set_run_mode(cfg.mode)
         stage_limits = dict(base_limits)
         stage_limits.setdefault("max_tokens", cfg.max_tokens)
         runners.append(
@@ -154,6 +174,7 @@ def build_stage_runners(config: LLMConfig, *, limits: Dict[str, Any]) -> List[St
                 StageConfig(
                     name=name,
                     provider=provider,
+                    mode=cfg.mode,
                     max_tokens=cfg.max_tokens,
                     temperature=cfg.temperature,
                     prompt_version=cfg.prompt_version,

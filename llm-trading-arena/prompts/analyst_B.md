@@ -12,4 +12,5 @@ Checklist:
 - [ ] Strategy choice justified by spread & depth.
 - [ ] Size hint obeys per-stage conservatism and venue filters.
 - [ ] TTL and urgency coherent with the regime.
+- [ ] Limits from the JSON variables block honoured.
 - [ ] Output is valid JSON with no extra tokens.

@@ -4,11 +4,15 @@ from src.config.models import LLMConfig, LLMStageConfig, LLMReliabilityConfig, A
 
 def _dummy_llm_config() -> LLMConfig:
     return LLMConfig(
+        budget_usd_per_min=0.5,
+        budget_usd_per_min_per_provider={"A": 0.25},
         per_mode_budget_usd_per_min={"paper": 0.5},
         token_budget_per_tick=1000,
         max_on_demand_features=3,
         aggregator_tau=1.0,
-        stages={"A": LLMStageConfig(provider="deepseek", max_tokens=400, temperature=0.2)},
+        stages={
+            "A": LLMStageConfig(provider="deepseek", max_tokens=400, temperature=0.2, mode="stub")
+        },
         reliability=LLMReliabilityConfig(window=200, lambda_=0.7),
         adaptive_budgeting=AdaptiveBudgetingConfig(enabled=True, min_frac=0.6, risk_weight=0.4),
         emergency_provider=EmergencyProviderConfig(),

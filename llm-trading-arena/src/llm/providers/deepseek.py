@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Dict
+import os
+from typing import Any, Dict
+
+from src.vendor import httpx
 
 from .base import LLMProvider
 
@@ -11,7 +14,45 @@ class DeepSeekProvider(LLMProvider):
         self._reliability = 0.55
 
     async def _raw_complete(self, *, prompt: str, schema: Dict[str, Any]) -> str:
-        raise RuntimeError("DeepSeek API not configured")
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY missing")
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": schema.get("properties", {}).get("strategy", {}).get("maxLength", 800),
+            "temperature": 0.2,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=self.request_timeout) as client:
+            response = await client.post(
+                "https://api.deepseek.com/chat/completions", json=payload, headers=headers
+            )
+            response.raise_for_status()
+        data = response.json()
+        usage = data.get("usage", {})
+        prompt_tokens = int(usage.get("prompt_tokens", 0))
+        completion_tokens = int(usage.get("completion_tokens", 0))
+        cost_usd = float(usage.get("total_cost", 0.0) or 0.0)
+        if prompt_tokens or completion_tokens:
+            self._last_meta.update(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=cost_usd or ((prompt_tokens + completion_tokens) / 1000.0 * 0.002),
+            )
+        choices = data.get("choices", [])
+        if not choices:
+            raise RuntimeError("deepseek: empty choices")
+        message = choices[0].get("message", {})
+        content = message.get("content")
+        if not content:
+            raise RuntimeError("deepseek: missing content")
+        return content
 
     def _mock_completion(self, *, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         vars_block = self._extract_vars(prompt)

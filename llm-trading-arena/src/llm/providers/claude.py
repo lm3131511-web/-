@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Dict
+import os
+from typing import Any, Dict
+
+from src.vendor import httpx
 
 from .base import LLMProvider
 
@@ -11,7 +14,47 @@ class ClaudeProvider(LLMProvider):
         self._reliability = 0.7
 
     async def _raw_complete(self, *, prompt: str, schema: Dict[str, Any]) -> str:
-        raise RuntimeError("Claude API not configured")
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise RuntimeError("ANTHROPIC_API_KEY missing")
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+        payload = {
+            "model": "claude-3-sonnet-20240229",
+            "max_output_tokens": 800,
+            "temperature": 0.2,
+            "system": "You are a cautious trading analyst.",
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        async with httpx.AsyncClient(timeout=self.request_timeout) as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages", headers=headers, json=payload
+            )
+            response.raise_for_status()
+        data = response.json()
+        usage = data.get("usage", {})
+        prompt_tokens = int(usage.get("input_tokens", 0))
+        completion_tokens = int(usage.get("output_tokens", 0))
+        if prompt_tokens or completion_tokens:
+            self._last_meta.update(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=(prompt_tokens + completion_tokens) / 1000.0 * 0.004,
+            )
+        content = data.get("content")
+        if not content:
+            raise RuntimeError("claude: missing content")
+        if isinstance(content, list):
+            text_chunks = [chunk.get("text", "") for chunk in content if isinstance(chunk, dict)]
+            text = "\n".join(part for part in text_chunks if part)
+        else:
+            text = str(content)
+        if not text:
+            raise RuntimeError("claude: empty message")
+        return text
 
     def _mock_completion(self, *, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         vars_block = self._extract_vars(prompt)
@@ -58,4 +101,5 @@ class ClaudeProvider(LLMProvider):
             "uncertainty_hints": [f"regime={regime}", f"risk={risk_level:.2f}"],
             "reliability": self._reliability,
             "requested_features": ["top_of_book"],
+            "reasoning": "stub-mode claude synthesis",
         }

@@ -5,8 +5,6 @@ import asyncio
 import json
 from typing import Any, Dict, Tuple
 
-from src.vendor import yaml
-
 from ...core.contracts.analyst import AnalystLLMOutput
 
 
@@ -20,6 +18,7 @@ class LLMProvider(abc.ABC):
     def __init__(self, name: str) -> None:
         self.name = name
         self.mock_mode = False
+        self.mode = "stub"
         self._last_meta: Dict[str, Any] = {
             "json_repair_used": False,
             "mock_fallback_used": False,
@@ -28,12 +27,22 @@ class LLMProvider(abc.ABC):
     def set_mock_mode(self, value: bool) -> None:
         self.mock_mode = value
 
+    def set_run_mode(self, mode: str) -> None:
+        if mode not in {"stub", "real"}:
+            raise ValueError(f"unsupported provider mode: {mode}")
+        self.mode = mode
+
     @property
     def last_completion_meta(self) -> Dict[str, Any]:
         return dict(self._last_meta)
 
     async def complete_json(self, *, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         self._last_meta = {"json_repair_used": False, "mock_fallback_used": False}
+        if self.mode != "real":
+            payload = self._validate_payload(self._mock_completion(prompt=prompt, schema=schema))
+            self._apply_usage_estimate(prompt, payload)
+            return payload
+
         last_error: Exception | None = None
         attempts = self.max_retries if not self.mock_mode else 1
         for attempt in range(1, attempts + 1):
@@ -50,6 +59,7 @@ class LLMProvider(abc.ABC):
                     validated = self._validate_payload(payload)
                     if repaired:
                         self._last_meta["json_repair_used"] = True
+                    self._ensure_usage(prompt, validated)
                     return validated
                 except Exception as exc:
                     last_error = exc
@@ -58,6 +68,7 @@ class LLMProvider(abc.ABC):
 
         if self.mock_mode:
             fallback = self._validate_payload(self._mock_completion(prompt=prompt, schema=schema))
+            self._apply_usage_estimate(prompt, fallback)
             self._last_meta.update(json_repair_used=True, mock_fallback_used=True)
             return fallback
         raise RuntimeError(f"{self.name} provider failed") from last_error
@@ -91,16 +102,51 @@ class LLMProvider(abc.ABC):
         model = AnalystLLMOutput.model_validate(payload)
         return model.model_dump()
 
+    def _ensure_usage(self, prompt: str, payload: Dict[str, Any]) -> None:
+        if "prompt_tokens" not in self._last_meta:
+            self._apply_usage_estimate(prompt, payload)
+
+    def _apply_usage_estimate(
+        self,
+        prompt: str,
+        payload: Dict[str, Any],
+        *,
+        cost_usd: float | None = None,
+        prompt_tokens: int | None = None,
+        completion_tokens: int | None = None,
+    ) -> None:
+        prompt_tokens = prompt_tokens or max(1, len(prompt) // 4)
+        completion_tokens = completion_tokens or max(
+            1, len(json.dumps(payload, ensure_ascii=False)) // 4
+        )
+        if cost_usd is None:
+            cost_usd = (prompt_tokens + completion_tokens) / 1000.0 * 0.002
+        self._last_meta.update(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cost_usd=cost_usd,
+        )
+
     def _extract_vars(self, prompt: str) -> Dict[str, Any]:
-        marker = "VARS:\n"
+        marker = "VARIABLES:\n"
         if marker not in prompt:
             return {}
         section = prompt.split(marker, 1)[1]
-        yaml_block = section.split("\n---", 1)[0]
+        json_block = section.split("\n\nSTRICT_JSON_SCHEMA:", 1)[0]
         try:
-            parsed = yaml.safe_load(yaml_block) or {}
-            if isinstance(parsed, dict):
-                return parsed
+            parsed = json.loads(json_block)
         except Exception:  # pragma: no cover - defensive
             return {}
-        return {}
+        if not isinstance(parsed, dict):
+            return {}
+        merged: Dict[str, Any] = {}
+        market_window = parsed.get("market_window")
+        if isinstance(market_window, dict):
+            merged.update(market_window)
+        if "regime" in parsed:
+            merged["regime"] = parsed["regime"]
+        if "risk_level" in parsed:
+            merged["risk_level"] = parsed["risk_level"]
+        if "limits" in parsed:
+            merged["limits"] = parsed["limits"]
+        return merged

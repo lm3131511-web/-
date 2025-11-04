@@ -4,6 +4,7 @@ import math
 from typing import Iterable, List
 
 from ..core.contracts import AggregationContributor, AggregationResult, AnalystResponse
+from ..monitoring.metrics import GLOBAL_METRICS
 from ..utils.time import now_utc_iso
 
 
@@ -97,6 +98,7 @@ def aggregate_responses(
         contributor.stage: weight for contributor, weight in zip(contributors, normalized_weights)
     }
     reliability_map = {contributor.stage: contributor.reliability for contributor in contributors}
+    GLOBAL_METRICS.record_weights(weight_map)
     return AggregationResult(
         contributors=contributors,
         p_final=p_final,

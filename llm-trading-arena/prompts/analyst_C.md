@@ -10,6 +10,6 @@ Focus: safety, consistency, and decisive escalation when signals are strong.
 
 Checklist:
 - [ ] Recommendation aligns with conservative bias and kill-switch mentality.
-- [ ] TTL, urgency, and strategy respect the limits block.
+- [ ] TTL, urgency, and strategy respect the limits block in the JSON payload.
 - [ ] JSON adheres to schema; FLAT chosen whenever doubt remains.
 - [ ] Prompt hash recorded (no prompt drift).
