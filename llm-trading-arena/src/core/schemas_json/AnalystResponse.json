@@ -19,8 +19,14 @@
     "price_band_hint": {
       "title": "price_band_hint"
     },
+    "prompt_hash": {
+      "type": "string"
+    },
     "prompt_tokens": {
       "type": "integer"
+    },
+    "prompt_version": {
+      "type": "string"
     },
     "provider": {
       "type": "string"
@@ -71,9 +77,6 @@
   "required": [
     "stage",
     "provider",
-    "prompt_tokens",
-    "completion_tokens",
-    "latency_ms",
     "direction",
     "strategy"
   ],

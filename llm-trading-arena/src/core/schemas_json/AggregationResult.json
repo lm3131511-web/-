@@ -30,13 +30,24 @@
     "uncertainty": {
       "type": "number"
     },
+    "updated_at": {
+      "type": "string"
+    },
     "weights": {
       "type": "object"
     }
   },
   "required": [
     "contributors",
-    "degradation_mode"
+    "p_final",
+    "uncertainty",
+    "tau_used",
+    "weights",
+    "reliability_scores",
+    "budget_spent_usd",
+    "budget_left_usd",
+    "degradation_mode",
+    "updated_at"
   ],
   "title": "AggregationResult",
   "type": "object"

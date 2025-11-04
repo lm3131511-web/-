@@ -1,26 +1,34 @@
 {
   "properties": {
+    "client_order_id": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "infeasible": {
+      "type": "boolean"
+    },
     "legs": {
       "items": {
         "$ref": "#/definitions/ExecutionLeg"
       },
       "type": "array"
     },
-    "minimal_notional_usd": {
-      "type": "number"
-    },
     "notes": {
-      "type": "string"
-    },
-    "post_only_queue_penalty_bps": {
-      "type": "number"
+      "type": "object"
     },
     "schema_meta": {
       "type": "object"
+    },
+    "strategy": {
+      "type": "string"
     }
   },
   "required": [
-    "legs"
+    "idempotency_key",
+    "client_order_id",
+    "strategy"
   ],
   "title": "ExecutionPlan",
   "type": "object"

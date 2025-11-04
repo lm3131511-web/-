@@ -1,4 +1,4 @@
-# LLM Trading Arena v1.6
+# LLM Trading Arena v1.7
 
 The LLM Trading Arena is a live-ready orchestration layer that combines LLM-based market analysis, strict risk gates, and exchange connectivity for Binance Spot. It supports paper, shadow, canary, and live execution tiers with fail-closed safety.
 
@@ -28,7 +28,7 @@ make run-canary
 make run-live
 ```
 
-> **Note:** Canary and live modes require real credentials supplied via environment variables `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID`. Populate `.env` from `.env.sample` or export them before invoking the commands above.
+> **Note:** Canary and live modes require real credentials supplied via environment variables `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and an `HTTP_AUTH_TOKEN` for the kill-switch endpoint. Populate `.env` from `.env.sample` or export them before invoking the commands above.
 
 ## Testing
 

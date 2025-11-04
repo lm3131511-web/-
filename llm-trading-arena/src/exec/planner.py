@@ -1,78 +1,114 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict
 
 from ..core.contracts import ExecutionLeg, ExecutionPlan, Signal
-from ..core.types import ExecutionStrategy, OrderSide
+from ..utils.ids import client_order_id, decision_idempotency_key
 
 
-@dataclass(slots=True)
+@dataclass
 class ExecutionConfig:
     enforce_exchange_filters: bool
     ttl_sec_range: tuple[int, int]
     price_bands_vol_mult: float
     minimal_notional_usd: float
     low_top_depth_usd: float
-    strategies: List[str]
+    max_spread_bps: float
+    strategies: list[str]
     strategy_thresholds: Dict[str, float]
     post_only_queue_penalty_bps: float
+    max_order_age_ms: int
+    slicing_enabled: bool
 
     @classmethod
     def from_mapping(cls, data: Dict[str, object]) -> "ExecutionConfig":
+        ttl_range = data.get("ttl_sec_range", [30, 120])
         return cls(
             enforce_exchange_filters=bool(data.get("enforce_exchange_filters", True)),
-            ttl_sec_range=(int(data["ttl_sec_range"][0]), int(data["ttl_sec_range"][1])),
-            price_bands_vol_mult=float(data["price_bands_vol_mult"]),
-            minimal_notional_usd=float(data["minimal_notional_usd"]),
-            low_top_depth_usd=float(data["low_top_depth_usd"]),
-            strategies=list(data["strategies"]),
+            ttl_sec_range=(int(ttl_range[0]), int(ttl_range[1])),
+            price_bands_vol_mult=float(data.get("price_bands_vol_mult", 2.0)),
+            minimal_notional_usd=float(data.get("minimal_notional_usd", 10)),
+            low_top_depth_usd=float(data.get("low_top_depth_usd", 1_000_000)),
+            max_spread_bps=float(data.get("max_spread_bps", 15)),
+            strategies=list(data.get("strategies", [])),
             strategy_thresholds=dict(data.get("strategy_thresholds", {})),
-            post_only_queue_penalty_bps=float(data["post_only_queue_penalty_bps"]),
+            post_only_queue_penalty_bps=float(data.get("post_only_queue_penalty_bps", 0.5)),
+            max_order_age_ms=int(data.get("max_order_age_ms", 100)),
+            slicing_enabled=bool(data.get("slicing", {}).get("enabled", False)),
         )
 
 
 class InfeasiblePlan(RuntimeError):
-    pass
+    """Raised when the execution plan cannot honour the LLM strategy."""
 
 
 class ExecutionPlanner:
-    def __init__(self, config: Dict[str, object]) -> None:
-        self.config = ExecutionConfig.from_mapping(config)
+    def __init__(self, execution_cfg: Dict[str, object], order_cfg: Dict[str, object]) -> None:
+        self.config = ExecutionConfig.from_mapping(execution_cfg)
+        self.id_prefix = str(order_cfg.get("idempotency_prefix", "arena-"))
 
     def plan(
         self,
         *,
         signal: Signal,
         market_snapshot: Dict[str, float],
-        price_band_bps: float | None,
+        price_band_hint: float | None,
         ttl_hint: int | None,
-        notional_usd: float,
     ) -> ExecutionPlan:
         if signal.strategy not in self.config.strategies:
             raise InfeasiblePlan(f"strategy {signal.strategy} not enabled")
-
+        spread_bps = market_snapshot.get("spread_bps", 0.0)
+        top_depth = market_snapshot.get("top_depth_usd", float("inf"))
+        if spread_bps > self.config.max_spread_bps:
+            raise InfeasiblePlan("spread exceeds execution guard")
+        if top_depth < self.config.low_top_depth_usd:
+            raise InfeasiblePlan("top depth too shallow")
+        mid = market_snapshot.get("mid_price", 0.0)
+        if mid <= 0:
+            raise InfeasiblePlan("missing mid price")
+        volatility = market_snapshot.get("volatility", 0.01)
+        band_bps = price_band_hint or (self.config.price_bands_vol_mult * volatility * 10_000)
+        adjustment = band_bps / 10_000
+        if signal.side == "BUY":
+            price = mid * (1 + adjustment)
+        else:
+            price = mid * (1 - adjustment)
         ttl = ttl_hint or self.config.ttl_sec_range[0]
         ttl = max(self.config.ttl_sec_range[0], min(self.config.ttl_sec_range[1], ttl))
-        volatility = market_snapshot.get("volatility", 0.01)
-        mid_price = market_snapshot.get("mid", 0.0)
-        if mid_price <= 0:
-            raise InfeasiblePlan("missing mid price")
-        band_bps = price_band_bps or (self.config.price_bands_vol_mult * volatility * 10_000)
-        band_multiplier = band_bps / 10_000
-        price = mid_price * (1 + band_multiplier if signal.side == "BUY" else 1 - band_multiplier)
+        quantity = max(0.0, signal.final_size_frac)
+        if quantity <= 0:
+            raise InfeasiblePlan("non-positive quantity")
         leg = ExecutionLeg(
             symbol=signal.symbol,
             side=signal.side,
             strategy=signal.strategy,
-            quantity=signal.final_size_frac,
-            price=round(price, 8),
+            price=price,
+            quantity=quantity,
             ttl_seconds=ttl,
-            notional_usd=notional_usd,
+        )
+        idem_key = decision_idempotency_key(
+            prefix=self.id_prefix,
+            symbol=signal.symbol,
+            side=signal.side,
+            strategy=signal.strategy,
+            ttl=ttl,
+            price=price,
+            size_frac=signal.final_size_frac,
+        )
+        client_id = client_order_id(
+            prefix=self.id_prefix,
+            symbol=signal.symbol,
+            side=signal.side,
+            price=price,
+            size_frac=signal.final_size_frac,
+            ttl=ttl,
         )
         return ExecutionPlan(
             legs=[leg],
-            minimal_notional_usd=self.config.minimal_notional_usd,
-            post_only_queue_penalty_bps=self.config.post_only_queue_penalty_bps,
-            notes="llm-driven",
+            idempotency_key=idem_key,
+            client_order_id=client_id,
+            strategy=signal.strategy,
+            infeasible=False,
+            notes={"price_band_bps": band_bps},
         )

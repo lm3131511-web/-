@@ -6,9 +6,6 @@
     "degradation_mode": {
       "type": "string"
     },
-    "idempotency_key": {
-      "type": "string"
-    },
     "kill_switch_state": {
       "type": "string"
     },
@@ -23,20 +20,15 @@
     },
     "snapshot_id": {
       "type": "string"
-    },
-    "ts_utc": {
-      "type": "string"
     }
   },
   "required": [
-    "idempotency_key",
-    "ts_utc",
     "snapshot_id",
-    "mode",
     "code_hash",
     "seed",
-    "kill_switch_state",
-    "degradation_mode"
+    "mode",
+    "degradation_mode",
+    "kill_switch_state"
   ],
   "title": "AuditInfo",
   "type": "object"

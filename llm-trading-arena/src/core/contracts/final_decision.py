@@ -10,7 +10,6 @@ from .execution import AuditInfo, ExecutionPlan
 from .risk_gate import RiskGateApproval
 from .signal import Signal
 
-
 FinalDecisionStatus = Literal["approved", "rejected"]
 
 
@@ -27,7 +26,4 @@ class FinalDecision(BaseModel):
     execution: ExecutionPlan | None
     audit: AuditInfo
 
-    model_config = {
-        "extra": "forbid",
-        "validate_assignment": True,
-    }
+    model_config = {"extra": "allow"}

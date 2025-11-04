@@ -13,6 +13,9 @@ class HealthSnapshot:
     venue: str
     kill_switch_state: str = "OFF"
     breakers: Dict[str, bool] = field(default_factory=dict)
+    clock_skew_ms: float = 0.0
+    ntp_sync_drift_ms: float | None = None
+    recovered_open_orders: int = 0
 
     def as_dict(self) -> Dict[str, object]:
         return {
@@ -23,4 +26,7 @@ class HealthSnapshot:
             "venue": self.venue,
             "kill_switch_state": self.kill_switch_state,
             "breakers": self.breakers,
+            "clock_skew_ms": self.clock_skew_ms,
+            "ntp_sync_drift_ms": self.ntp_sync_drift_ms,
+            "recovered_open_orders": self.recovered_open_orders,
         }

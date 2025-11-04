@@ -9,6 +9,9 @@
     "cooldown_active": {
       "type": "boolean"
     },
+    "infeasible": {
+      "type": "boolean"
+    },
     "limit_check": {
       "type": "object"
     },
@@ -16,7 +19,6 @@
       "type": "boolean"
     },
     "reason": {
-      "nullable": true,
       "type": "string"
     },
     "schema_meta": {
@@ -24,7 +26,12 @@
     }
   },
   "required": [
-    "approved"
+    "approved",
+    "reason",
+    "limit_check",
+    "cooldown_active",
+    "circuit_breaker_tripped",
+    "pnl_breaker_tripped"
   ],
   "title": "RiskGateApproval",
   "type": "object"

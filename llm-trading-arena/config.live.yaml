@@ -2,47 +2,76 @@ mode: live
 dry_run: false
 sell_enabled: true
 
+storage_dir: data
+sqlite_path: arena.sqlite3
+
 assets:
-  tickers: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","ADAUSDT"]
+  tickers: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT", "ADAUSDT"]
   adv_usd_table: { BTCUSDT: 9.0e9, ETHUSDT: 4.0e9, SOLUSDT: 1.2e9, XRPUSDT: 0.8e9, BNBUSDT: 1.5e9, ADAUSDT: 0.6e9 }
+  adv_table_asof: "2025-01-01T00:00:00Z"
+  adv_grace_sec: 2592000
+  hard_notional_cap_usd: 5000
   top_depth_usd: { BTCUSDT: 5.0e6, ETHUSDT: 3.0e6, SOLUSDT: 1.0e6, XRPUSDT: 0.8e6, BNBUSDT: 1.2e6, ADAUSDT: 0.5e6 }
-  clusters: { BTCUSDT: "majors", ETHUSDT: "majors", SOLUSDT: "alts", XRPUSDT: "alts", BNBUSDT: "majors", ADAUSDT: "alts" }
+  clusters: { BTCUSDT: majors, ETHUSDT: majors, SOLUSDT: alts, XRPUSDT: alts, BNBUSDT: majors, ADAUSDT: alts }
 
 llm:
-  budget_usd_per_min: 0.85
-  token_budget_per_tick: 3200
+  per_mode_budget_usd_per_min: { paper: 0.10, shadow: 0.25, canary: 0.50, live: 0.75 }
+  token_budget_per_tick: 3000
   max_on_demand_features: 3
   aggregator_tau: 1.0
   stages:
-    A: { provider: "deepseek", max_tokens: 900, temperature: 0.2 }
-    B: { provider: "qwen", max_tokens: 900, temperature: 0.2 }
-    C: { provider: "claude", max_tokens: 1300, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20 }
+    A: { provider: deepseek, max_tokens: 800, temperature: 0.2 }
+    B: { provider: qwen, max_tokens: 800, temperature: 0.2 }
+    C: { provider: claude, max_tokens: 1200, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20 }
   reliability:
-    window: 700
+    window: 500
     lambda: 0.7
+    update_every_n: 200
+    update_every_min: 15
+    min_interval_min: 5
+  adaptive_budgeting: { enabled: true, min_frac: 0.6, risk_weight: 0.4 }
+  emergency_provider:
+    enabled: false
+    name: tinyllama
+    max_tokens: 256
+    safety_guard:
+      force_flat_on_uncertainty: true
+      max_urgency: 0.2
+  degradation: { u_enter: 0.55, budget_enter_pct: 8, u_exit: 0.40, budget_exit_pct: 30, min_emergency_min: 15 }
 
 risk_gate:
-  limits: { per_trade_loss_pct: 0.45, per_day_loss_pct: 1.5, max_drawdown_pct: 12.0 }
+  limits: { per_trade_loss_pct: 0.4, per_day_loss_pct: 1.5, max_drawdown_pct: 12.0 }
   sizing: { pos_cap_per_asset_pct: 1.5, cluster_cap_pct: 3.0 }
   market: { max_spread_bps: 10 }
-  cooldowns: { after_stop_sec: 900, min_between_trades_sec: 120 }
-  circuit_breakers: { ece_threshold: 0.06, hitrate_drop_window: 200 }
-  pnl_breaker: { day_loss_pct: 0.2, week_loss_pct: 0.6 }
+  cooldowns: { after_stop_sec: 900, min_between_trades_sec: 180 }
+  circuit_breakers: { ece_threshold: 0.08, hitrate_drop_window: 200 }
+  pnl_breaker: { day_loss_pct: 0.20, week_loss_pct: 0.6 }
 
 execution:
   enforce_exchange_filters: true
-  ttl_sec_range: [20, 90]
-  price_bands_vol_mult: 1.8
-  minimal_notional_usd: 15
-  low_top_depth_usd: 900000
+  ttl_sec_range: [30, 120]
+  price_bands_vol_mult: 2.0
+  minimal_notional_usd: 10
+  low_top_depth_usd: 800000
+  max_spread_bps: 12
   strategies: [POST_ONLY, IOC, POV, TWAP]
-  strategy_thresholds: { pov_adv_max_pct: 0.25, post_only_spread_frac: 0.4, strong_signal_z: 1.2 }
-  post_only_queue_penalty_bps: 0.4
+  strategy_thresholds: { pov_adv_max_pct: 0.3, post_only_spread_frac: 0.5, strong_signal_z: 1.5 }
+  post_only_queue_penalty_bps: 0.5
+  max_order_age_ms: 100
+  slicing:
+    enabled: true
+    pov_slice_frac_of_curr_vol: 0.10
+    min_notional_usd: 10
+    per_asset:
+      BTCUSDT: { depth_imbalance_buy_cutoff: 0.85, depth_imbalance_sell_cutoff: 0.85, aggression_cut_frac: 0.7 }
+      ADAUSDT: { depth_imbalance_buy_cutoff: 0.60, depth_imbalance_sell_cutoff: 0.60, aggression_cut_frac: 0.3 }
+
+order_management: { deduplication_window_sec: 300, retries: 2, idempotency_prefix: "arena-" }
 
 economics:
   stress_slippage_prob: 0.3
-  normal: { k_vol_bps: 0.30, sigma: 0.55 }
-  stress: { k_vol_bps: 0.65, sigma: 1.0 }
+  normal: { k_vol_bps: 0.35, sigma: 0.6 }
+  stress: { k_vol_bps: 0.75, sigma: 1.2 }
 
 calendar:
   timezone: UTC
@@ -52,14 +81,7 @@ calendar:
   overrides: []
   events_utc: []
 
-rolling_metrics:
-  windows:
-    - 200
-    - 500
-    - 1000
-  min_samples: 50
-
-order_management: { deduplication_window_sec: 300, retries: 2, idempotency_prefix: "arena-" }
+rolling_metrics: { windows: [200, 500, 1000], min_samples: 50 }
 
 logging:
   level: INFO
@@ -73,8 +95,16 @@ monitoring:
   metrics_port: 9108
   health_interval_sec: 15
   alert_sink: telegram
-  alert_min_level: notice
+  alert_min_level: info
   alert_dedup_window_sec: 60
+  http: { bind: "127.0.0.1", auth_token_env: HTTP_AUTH_TOKEN, kill_rate_limit_per_min: 1 }
+
+adapters:
+  time_sync:
+    mode: both
+    max_exchange_failures: 3
+    fallback_policy: { auto_switch_to_ntp: true, alert_on_switch: critical }
+    ntp: { enabled: true, host: pool.ntp.org, threshold_ms: 500 }
 
 exchange:
   name: binance_spot
@@ -93,6 +123,4 @@ telegram:
   chat_id_env: TELEGRAM_CHAT_ID
 
 units: { tolerance_bps: 1.0, enforce: true }
-schemas: { version: 2 }
-storage_dir: data
-sqlite_path: arena.sqlite3
+schemas: { version: 1 }

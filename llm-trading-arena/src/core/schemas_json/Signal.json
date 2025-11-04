@@ -6,10 +6,10 @@
     "kelly_base": {
       "type": "number"
     },
-    "p_final": {
-      "type": "number"
+    "metadata": {
+      "type": "object"
     },
-    "reasoning": {
+    "regime": {
       "type": "string"
     },
     "safety_multiplier": {
@@ -19,25 +19,13 @@
       "type": "object"
     },
     "side": {
-      "enum": [
-        "BUY",
-        "SELL",
-        "FLAT"
-      ]
+      "type": "string"
     },
     "strategy": {
-      "enum": [
-        "POST_ONLY",
-        "IOC",
-        "POV",
-        "TWAP"
-      ]
+      "type": "string"
     },
     "symbol": {
       "type": "string"
-    },
-    "uncertainty": {
-      "type": "number"
     }
   },
   "required": [
@@ -46,7 +34,8 @@
     "strategy",
     "kelly_base",
     "safety_multiplier",
-    "reasoning"
+    "final_size_frac",
+    "regime"
   ],
   "title": "Signal",
   "type": "object"
