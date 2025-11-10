@@ -11,7 +11,10 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from src.vendor.dotenv import load_dotenv
 
-from ..adapters.exchange.binance_spot import BinanceCreds, BinanceSpotAdapter
+from ..adapters.exchange import build_exchange_adapter
+from ..adapters.exchange.binance_spot import BinanceCreds
+from ..adapters.exchange.bybit_unified import BybitCreds
+from ..adapters.exec_sim import SimulatedFill, simulate_order_execution, serialize_fills
 from ..alerts.sink import build_alert_sink
 from ..config.loader import load_config
 from ..config.validators import validate_config
@@ -27,6 +30,7 @@ from ..core.contracts import (
 from ..core.types import ExecutionStrategy, OrderRequest, OrderSide, TradingMode
 from ..exec.planner import ExecutionPlanner, InfeasiblePlan
 from ..features.core_features import build_core_features
+from ..features.market_window import build_market_window
 from ..features.on_demand_features import build_on_demand_features
 from ..features.regime_detection import detect_regime
 from ..llm.aggregator import AggregationError, aggregate_responses
@@ -45,7 +49,6 @@ from ..risk.gate import (
     RiskGate,
     RiskLimits,
 )
-from ..risk.spread_filter import calculate_spread_bps
 from ..utils.determinism import project_code_hash
 from ..utils.ids import decision_idempotency_key
 from ..utils.logrotate import ensure_parent, rotate_if_big
@@ -67,7 +70,7 @@ class TradingArena:
         self.config = config
         self.dry_run = dry_run
         self.mode = TradingMode(config.mode)
-        self.adapter = BinanceSpotAdapter(config.exchange.model_dump())
+        self.adapter = build_exchange_adapter(config.exchange)
         self.storage_paths = self._resolve_storage_paths(config)
         self._sqlite_conn: sqlite3.Connection | None = None
         self._http_server = None
@@ -170,6 +173,7 @@ class TradingArena:
             raise RuntimeError("kill switch engaged")
 
         tick = await self.adapter.get_next_data()
+        self._enforce_time_sync()
         snapshot = self._compose_market_snapshot(tick)
         regime, risk_level = detect_regime(snapshot)
         budget_snapshot = self._budget_manager.compute_budget(regime=regime, risk_level=risk_level)
@@ -252,8 +256,8 @@ class TradingArena:
             snapshot=snapshot,
             regime=regime,
         )
-        if decision.status == "approved" and execution and self._should_execute():
-            await self._submit_execution(execution, snapshot["symbol"])
+        if decision.status == "approved" and decision.execution:
+            await self._handle_execution(decision, snapshot)
         return decision
 
     async def run_forever(self) -> None:
@@ -420,26 +424,8 @@ class TradingArena:
             self._sqlite_conn.commit()
 
     def _compose_market_snapshot(self, tick: Dict[str, Any]) -> Dict[str, float]:
-        bid = float(tick.get("bid", tick.get("last_price", 0)))
-        ask = float(tick.get("ask", tick.get("last_price", 0)))
-        mid = (bid + ask) / 2 if bid and ask else float(tick.get("last_price", 0))
-        symbol = tick.get("symbol", self.config.assets.get("tickers", ["BTCUSDT"])[0])
-        spread_bps = calculate_spread_bps(bid=bid, ask=ask)
-        top_depth_usd = self.config.assets.get("top_depth_usd", {}).get(symbol, 1_000_000.0)
-        snapshot = {
-            "symbol": symbol,
-            "bid": bid,
-            "ask": ask,
-            "mid_price": mid,
-            "spread_bps": spread_bps,
-            "volatility": float(tick.get("volatility", 0.01)),
-            "top_depth_usd": float(top_depth_usd),
-            "ts_utc": now_utc_iso(),
-            "drift": float(tick.get("drift", 0.0)),
-            "order_imbalance": float(tick.get("order_imbalance", 0.0)),
-            "micro_price_delta": float(tick.get("micro_price_delta", 0.0)),
-            "risk_state": float(tick.get("risk_state", 0.0)),
-        }
+        snapshot = build_market_window(tick, config=self.config)
+        snapshot.setdefault("ts_utc", now_utc_iso())
         return snapshot
 
     def _format_alert(self, decision: FinalDecision) -> str:
@@ -459,6 +445,39 @@ class TradingArena:
 
     def _should_execute(self) -> bool:
         return self.mode in {TradingMode.CANARY, TradingMode.LIVE} and not self.dry_run
+
+    def _enforce_time_sync(self) -> None:
+        metrics = {}
+        if hasattr(self.adapter, "metrics_snapshot"):
+            try:
+                metrics = self.adapter.metrics_snapshot() or {}
+            except Exception:  # pragma: no cover - defensive
+                metrics = {}
+        skew = float(metrics.get("ts_offset_ms", 0.0) or 0.0)
+        self._health.clock_skew_ms = skew
+        max_skew = float(getattr(self.config.exchange, "max_clock_skew_ms", 0))
+        if max_skew and abs(skew) > max_skew:
+            self._health.breakers["time_sync"] = True
+            raise RuntimeError("clock skew guard triggered")
+        self._health.breakers.pop("time_sync", None)
+
+    async def _handle_execution(self, decision: FinalDecision, snapshot: Dict[str, Any]) -> None:
+        plan = decision.execution
+        if not plan:
+            return
+        if self._should_execute():
+            await self._submit_execution(plan, snapshot.get("symbol", ""))
+            self._record_execution(decision=decision, fills=None, summary=None, simulated=False)
+            return
+        economics_cfg = self.config.economics.model_dump()
+        fills, summary = simulate_order_execution(
+            plan,
+            snapshot,
+            economics_cfg,
+            decision_id=plan.idempotency_key,
+        )
+        self._record_execution(decision=decision, fills=fills, summary=summary, simulated=True)
+        self._persist_fills(fills)
 
     async def _submit_execution(self, execution: ExecutionPlan, symbol: str) -> None:
         creds = self._load_creds()
@@ -484,12 +503,61 @@ class TradingArena:
             )
             await self.adapter.place_order(request, creds)
 
-    def _load_creds(self) -> Optional[BinanceCreds]:
+    def _load_creds(self) -> Optional[Any]:
         key = os.environ.get(self.config.exchange.api_key_env)
         secret = os.environ.get(self.config.exchange.api_secret_env)
         if not key or not secret:
             return None
+        name = self.config.exchange.name.lower()
+        if name == "bybit_unified":
+            return BybitCreds(api_key=key, api_secret=secret)
         return BinanceCreds(api_key=key, api_secret=secret)
+
+    def _record_execution(
+        self,
+        *,
+        decision: FinalDecision,
+        fills: Optional[List[SimulatedFill]],
+        summary: Optional[Dict[str, Any]],
+        simulated: bool,
+    ) -> None:
+        if not decision.execution:
+            return
+        record = {
+            "decision_id": decision.execution.idempotency_key,
+            "ts_utc": now_utc_iso(),
+            "mode": self.config.mode,
+            "simulated": simulated,
+            "execution": decision.execution.model_dump(),
+            "summary": summary,
+            "fills": serialize_fills(fills or []),
+        }
+        with self.storage_paths.execution.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, ensure_ascii=False))
+            handle.write("\n")
+
+    def _persist_fills(self, fills: List[SimulatedFill]) -> None:
+        if not fills or not self._sqlite_conn:
+            return
+        records = serialize_fills(fills)
+        cursor = self._sqlite_conn.cursor()
+        cursor.executemany(
+            "INSERT OR REPLACE INTO fills(id, decision_id, ts_utc, asset, price, qty, fee_usd, slippage_bps) VALUES(?,?,?,?,?,?,?,?)",
+            [
+                (
+                    rec["id"],
+                    rec["decision_id"],
+                    rec["ts_utc"],
+                    rec["asset"],
+                    rec["price"],
+                    rec["qty"],
+                    rec.get("fee_usd"),
+                    rec.get("slippage_bps"),
+                )
+                for rec in records
+            ],
+        )
+        self._sqlite_conn.commit()
 
 
 async def _async_main(args: argparse.Namespace) -> None:

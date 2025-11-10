@@ -26,3 +26,9 @@ def test_budget_manager_respects_minimum_fraction() -> None:
     assert snap.effective_budget_usd >= manager.base_budget * manager.config.adaptive_budgeting.min_frac
     snap2 = manager.compute_budget(regime="stable", risk_level=0.0)
     assert snap2.effective_budget_usd <= manager.base_budget
+
+
+def test_budget_sentry_rejects_overage() -> None:
+    manager = BudgetManager(_dummy_llm_config(), "paper")
+    assert manager.register_provider_spend("A", 0.1, now=0.0)
+    assert not manager.register_provider_spend("A", 0.5, now=10.0)

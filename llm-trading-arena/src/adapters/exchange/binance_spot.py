@@ -45,6 +45,9 @@ class BinanceSpotAdapter:
             "rate_limit_hits": 0,
             "venue_latency_ms_avg": 0,
             "ts_offset_ms": 0,
+            "ws_reconnects_total": 0,
+            "ws_resubscribe_failures_total": 0,
+            "precision_cache_invalidations_total": 0,
         }
 
     async def start(self) -> None:
@@ -104,6 +107,8 @@ class BinanceSpotAdapter:
         resp.raise_for_status()
         self._exchange_info = resp.json()
         self._exchange_info_ts = time.time()
+        if self._precision_cache:
+            self._metrics["precision_cache_invalidations_total"] += 1
         self._precision_cache.clear()
         return self._exchange_info
 

@@ -2,7 +2,7 @@ from src.llm.degradation import DegradationController
 from src.config.models import DegradationConfig
 
 
-def test_degradation_escalates_and_exits() -> None:
+def test_degradation_auto_exit_emergency() -> None:
     controller = DegradationController(DegradationConfig())
     mode = controller.update(uncertainty=0.2, budget_left_pct=0.5)
     assert mode == "full"
