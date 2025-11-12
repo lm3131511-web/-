@@ -1,0 +1,35 @@
+{
+  "properties": {
+    "code_hash": {
+      "type": "string"
+    },
+    "degradation_mode": {
+      "type": "string"
+    },
+    "kill_switch_state": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "snapshot_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "snapshot_id",
+    "code_hash",
+    "seed",
+    "mode",
+    "degradation_mode",
+    "kill_switch_state"
+  ],
+  "title": "AuditInfo",
+  "type": "object"
+}

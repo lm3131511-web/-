@@ -1,0 +1,42 @@
+{
+  "properties": {
+    "final_size_frac": {
+      "type": "number"
+    },
+    "kelly_base": {
+      "type": "number"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "regime": {
+      "type": "string"
+    },
+    "safety_multiplier": {
+      "type": "number"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "side": {
+      "type": "string"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "symbol": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "symbol",
+    "side",
+    "strategy",
+    "kelly_base",
+    "safety_multiplier",
+    "final_size_frac",
+    "regime"
+  ],
+  "title": "Signal",
+  "type": "object"
+}

@@ -1,0 +1,167 @@
+mode: live
+dry_run: false
+sell_enabled: true
+
+storage_dir: data
+sqlite_path: arena.sqlite3
+
+assets:
+  tickers: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT", "ADAUSDT"]
+  adv_usd_table: { BTCUSDT: 9.0e9, ETHUSDT: 4.0e9, SOLUSDT: 1.2e9, XRPUSDT: 0.8e9, BNBUSDT: 1.5e9, ADAUSDT: 0.6e9 }
+  adv_table_asof: "2025-01-01T00:00:00Z"
+  adv_grace_sec: 2592000
+  hard_notional_cap_usd: 5000
+  adv_usd_table_path: data/adv/adv_usd_table.csv
+  top_depth_usd: { BTCUSDT: 5.0e6, ETHUSDT: 3.0e6, SOLUSDT: 1.0e6, XRPUSDT: 0.8e6, BNBUSDT: 1.2e6, ADAUSDT: 0.5e6 }
+  clusters: { BTCUSDT: majors, ETHUSDT: majors, SOLUSDT: alts, XRPUSDT: alts, BNBUSDT: majors, ADAUSDT: alts }
+
+llm:
+  mock_mode: false
+  budget_usd_per_min: 0.75
+  budget_usd_per_min_per_provider: { A: 0.30, B: 0.20, C: 0.35 }
+  per_mode_budget_usd_per_min: { paper: 0.10, shadow: 0.25, canary: 0.50, live: 0.75 }
+  token_budget_per_tick: 3000
+  max_on_demand_features: 3
+  aggregator_tau: 1.0
+  stages:
+    A: { provider: deepseek, mode: stub, max_tokens: 800, temperature: 0.2, prompt_version: "v1" }
+    B: { provider: qwen, mode: stub, max_tokens: 800, temperature: 0.2, prompt_version: "v1" }
+    C: { provider: claude, mode: stub, max_tokens: 1200, temperature: 0.2, min_uncertainty: 0.30, min_budget_left: 0.20, prompt_version: "v1" }
+  reliability:
+    window: 500
+    lambda: 0.7
+    update_every_n: 200
+    update_every_min: 15
+    min_interval_min: 5
+  adaptive_budgeting: { enabled: true, min_frac: 0.6, risk_weight: 0.4 }
+  emergency_provider:
+    enabled: false
+    name: tinyllama
+    max_tokens: 256
+    safety_guard:
+      force_flat_on_uncertainty: true
+      max_urgency: 0.2
+  degradation: { u_enter: 0.55, budget_enter_pct: 8, u_exit: 0.40, budget_exit_pct: 30, min_emergency_min: 15 }
+
+risk_gate:
+  limits:
+    per_trade_loss_pct: 0.4
+    per_trade_loss_pct_unit: "%"
+    per_day_loss_pct: 1.5
+    per_day_loss_pct_unit: "%"
+    max_drawdown_pct: 12.0
+    max_drawdown_pct_unit: "%"
+  sizing:
+    pos_cap_per_asset_pct: 1.5
+    pos_cap_per_asset_pct_unit: "%"
+    cluster_cap_pct: 3.0
+    cluster_cap_pct_unit: "%"
+  market:
+    max_spread_bps: 10
+    max_spread_bps_unit: bps
+  cooldowns:
+    after_stop_sec: 900
+    after_stop_sec_unit: sec
+    min_between_trades_sec: 180
+    min_between_trades_sec_unit: sec
+  circuit_breakers:
+    ece_threshold: 0.08
+    ece_threshold_unit: ratio
+    hitrate_drop_window: 200
+    hitrate_drop_window_unit: ticks
+  pnl_breaker:
+    day_loss_pct: 0.20
+    day_loss_pct_unit: "%"
+    week_loss_pct: 0.6
+    week_loss_pct_unit: "%"
+
+execution:
+  enforce_exchange_filters: true
+  ttl_sec_range: [30, 120]
+  price_bands_vol_mult: 2.0
+  price_bands_vol_mult_unit: vol_mult
+  minimal_notional_usd: 10
+  minimal_notional_usd_unit: usd
+  low_top_depth_usd: 800000
+  low_top_depth_usd_unit: usd
+  max_spread_bps: 12
+  max_spread_bps_unit: bps
+  strategies: [POST_ONLY, IOC, POV, TWAP]
+  strategy_thresholds: { pov_adv_max_pct: 0.3, post_only_spread_frac: 0.5, strong_signal_z: 1.5 }
+  post_only_queue_penalty_bps: 0.5
+  post_only_queue_penalty_bps_unit: bps
+  max_order_age_ms: 100
+  max_order_age_ms_unit: ms
+  slicing:
+    enabled: true
+    pov_slice_frac_of_curr_vol: 0.10
+    min_notional_usd: 10
+    per_asset:
+      BTCUSDT: { depth_imbalance_buy_cutoff: 0.85, depth_imbalance_sell_cutoff: 0.85, aggression_cut_frac: 0.7 }
+      ADAUSDT: { depth_imbalance_buy_cutoff: 0.60, depth_imbalance_sell_cutoff: 0.60, aggression_cut_frac: 0.3 }
+
+order_management: { deduplication_window_sec: 300, retries: 2, idempotency_prefix: "arena-" }
+
+economics:
+  stress_slippage_prob: 0.3
+  normal: { k_vol_bps: 0.35, sigma: 0.6 }
+  stress: { k_vol_bps: 0.75, sigma: 1.2 }
+
+calendar:
+  timezone: UTC
+  blackout_windows:
+    - { tag: "FOMC", start_utc: "T-01:00", end_utc: "T+02:00", weekdays: [2,3,4] }
+    - { tag: "CPI", start_utc: "T-00:30", end_utc: "T+01:00", weekdays: [1,2,3,4,5] }
+  overrides: []
+  events_utc: []
+
+rolling_metrics: { windows: [200, 500, 1000], min_samples: 50 }
+
+logging:
+  level: INFO
+  paths:
+    decisions: data/logs/decisions.jsonl
+    execution: data/logs/execution.jsonl
+    audit: data/logs/audit.jsonl
+    alerts: data/logs/alerts.jsonl
+  rotation:
+    max_file_mb: 100
+    max_files_per_stream: 30
+    max_retention_days: 30
+
+monitoring:
+  metrics_port: 9108
+  health_interval_sec: 15
+  http: { bind: "127.0.0.1", auth_token_env: HTTP_AUTH_TOKEN, kill_rate_limit_per_min: 1, kill_file_path: data/kill.switch }
+
+alerts:
+  mode: telegram
+  min_level: info
+  dedup_window_sec: 60
+  webhook_env: ALERT_WEBHOOK_URL
+
+adapters:
+  time_sync:
+    mode: both
+    max_exchange_failures: 3
+    fallback_policy: { auto_switch_to_ntp: true, alert_on_switch: critical }
+    ntp: { enabled: true, host: pool.ntp.org, threshold_ms: 500 }
+
+exchange:
+  name: binance_spot
+  base_url: https://api.binance.com
+  ws_url: wss://stream.binance.com:9443/ws
+  recv_window_ms: 5000
+  account_type: spot
+  time_sync_sec: 60
+  max_clock_skew_ms: 1500
+  precision_cache_ttl_sec: 600
+  api_key_env: BINANCE_API_KEY
+  api_secret_env: BINANCE_API_SECRET
+
+telegram:
+  bot_token_env: TELEGRAM_BOT_TOKEN
+  chat_id_env: TELEGRAM_CHAT_ID
+
+units: { tolerance_bps: 1.0, enforce: true }
+schemas: { version: 1 }

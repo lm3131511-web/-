@@ -1,0 +1,35 @@
+{
+  "properties": {
+    "client_order_id": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "infeasible": {
+      "type": "boolean"
+    },
+    "legs": {
+      "items": {
+        "$ref": "#/definitions/ExecutionLeg"
+      },
+      "type": "array"
+    },
+    "notes": {
+      "type": "object"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "strategy": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "client_order_id",
+    "strategy"
+  ],
+  "title": "ExecutionPlan",
+  "type": "object"
+}

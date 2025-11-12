@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "adjusted_confidence": {
+      "nullable": true,
+      "type": "number"
+    },
+    "feasible": {
+      "type": "boolean"
+    },
+    "issues": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schema_meta": {
+      "type": "object"
+    }
+  },
+  "title": "RefereeVerdict",
+  "type": "object"
+}

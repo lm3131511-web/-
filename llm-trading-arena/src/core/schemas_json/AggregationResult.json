@@ -1,0 +1,54 @@
+{
+  "properties": {
+    "budget_left_usd": {
+      "type": "number"
+    },
+    "budget_spent_usd": {
+      "type": "number"
+    },
+    "contributors": {
+      "items": {
+        "$ref": "#/definitions/AggregationContributor"
+      },
+      "type": "array"
+    },
+    "degradation_mode": {
+      "type": "string"
+    },
+    "p_final": {
+      "type": "number"
+    },
+    "reliability_scores": {
+      "type": "object"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "tau_used": {
+      "type": "number"
+    },
+    "uncertainty": {
+      "type": "number"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "weights": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "contributors",
+    "p_final",
+    "uncertainty",
+    "tau_used",
+    "weights",
+    "reliability_scores",
+    "budget_spent_usd",
+    "budget_left_usd",
+    "degradation_mode",
+    "updated_at"
+  ],
+  "title": "AggregationResult",
+  "type": "object"
+}

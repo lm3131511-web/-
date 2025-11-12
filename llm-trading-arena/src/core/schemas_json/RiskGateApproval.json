@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "approved": {
+      "type": "boolean"
+    },
+    "circuit_breaker_tripped": {
+      "type": "boolean"
+    },
+    "cooldown_active": {
+      "type": "boolean"
+    },
+    "infeasible": {
+      "type": "boolean"
+    },
+    "limit_check": {
+      "type": "object"
+    },
+    "pnl_breaker_tripped": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "schema_meta": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "approved",
+    "reason",
+    "limit_check",
+    "cooldown_active",
+    "circuit_breaker_tripped",
+    "pnl_breaker_tripped"
+  ],
+  "title": "RiskGateApproval",
+  "type": "object"
+}

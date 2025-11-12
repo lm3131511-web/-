@@ -1,0 +1,85 @@
+{
+  "properties": {
+    "completion_tokens": {
+      "type": "integer"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "direction": {
+      "enum": [
+        "BUY",
+        "SELL",
+        "FLAT"
+      ]
+    },
+    "latency_ms": {
+      "type": "number"
+    },
+    "price_band_hint": {
+      "title": "price_band_hint"
+    },
+    "prompt_hash": {
+      "type": "string"
+    },
+    "prompt_tokens": {
+      "type": "integer"
+    },
+    "prompt_version": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "reasoning": {
+      "nullable": true,
+      "type": "string"
+    },
+    "reliability": {
+      "type": "number"
+    },
+    "requested_features": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schema_meta": {
+      "type": "object"
+    },
+    "size_hint_frac": {
+      "type": "number"
+    },
+    "stage": {
+      "type": "string"
+    },
+    "strategy": {
+      "enum": [
+        "POST_ONLY",
+        "IOC",
+        "POV",
+        "TWAP"
+      ]
+    },
+    "ttl_hint_sec": {
+      "title": "ttl_hint_sec"
+    },
+    "uncertainty_hints": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "urgency": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "stage",
+    "provider",
+    "direction",
+    "strategy"
+  ],
+  "title": "AnalystResponse",
+  "type": "object"
+}
