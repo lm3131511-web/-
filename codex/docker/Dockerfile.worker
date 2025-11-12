@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    CODEX_ENV=live
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+COPY src ./src
+COPY prompts ./prompts
+COPY configs ./configs
+COPY taxonomy ./taxonomy
+COPY scripts ./scripts
+
+RUN pip install --upgrade pip \
+    && pip install .
+
+CMD ["python", "-m", "codex.news_pipeline.ingest"]

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
 
 
 class RetryConfig(BaseModel):
@@ -15,6 +16,12 @@ class LLMConfig(BaseModel):
     retry: RetryConfig = Field(default_factory=RetryConfig)
     max_ctx_tokens: int = Field(ge=0, default=32000)
     output_json_schema: str
+
+
+class RuntimeConfig(BaseModel):
+    environment: str = "base"
+    quant_only_mode: bool = False
+    cold_start: bool = False
 
 
 class PersistenceConfig(BaseModel):
@@ -60,8 +67,8 @@ class ProviderConfig(BaseModel):
     enabled: bool = True
     max_items: int = 200
     window_min: int = 90
-    trusted_sources: List[str] | None = None
-    min_followers: int | None = None
+    trusted_sources: Optional[List[str]] = None
+    min_followers: Optional[int] = None
 
 
 class SanitizerConfig(BaseModel):
@@ -85,6 +92,7 @@ class NewsConfig(BaseModel):
 class NewsRuleConfig(BaseModel):
     high_event_block: bool = True
     high_event_min_confidence: float = 0.7
+    high_event_min_sources: int = 2
 
 
 class VolatilityRuleConfig(BaseModel):
@@ -112,6 +120,7 @@ class RiskRulesConfig(BaseModel):
 
 
 class Settings(BaseModel):
+    runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
     llm: LLMConfig
     llm_risk: LLMRiskConfig
     news: NewsConfig

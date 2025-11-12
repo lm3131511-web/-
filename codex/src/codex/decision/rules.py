@@ -42,7 +42,11 @@ def evaluate_rules(
             reason="atr downgrade",
         )
     news_cfg = config.news
-    if sentiment.event_severity == "high" and sentiment.confidence >= news_cfg.high_event_min_confidence:
+    if (
+        sentiment.event_severity == "high"
+        and sentiment.confidence >= news_cfg.high_event_min_confidence
+        and sentiment.sources_confirmed >= news_cfg.high_event_min_sources
+    ):
         return RuleResult(
             verdict="BLOCK" if news_cfg.high_event_block else "DOWNGRADE",
             size_multiplier=0.0 if news_cfg.high_event_block else 0.4,

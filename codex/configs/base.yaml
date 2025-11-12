@@ -6,6 +6,11 @@
     "max_ctx_tokens": 32000,
     "output_json_schema": "prompts/schemas/llm_risk_assessment.schema.json"
   },
+  "runtime": {
+    "environment": "base",
+    "quant_only_mode": false,
+    "cold_start": false
+  },
   "llm_risk": {
     "cooldown_sec": 45,
     "feature_fingerprint": {
@@ -13,7 +18,7 @@
       "deltas": {
         "rsi_14": 5.0,
         "atr_pct": 0.3,
-        "spread_bps": 2,
+        "spread_bps": 2.0,
         "sentiment_score": 0.4,
         "event_severity": 1
       }
@@ -30,7 +35,7 @@
     "distributed": {
       "enabled": true,
       "backend": "redis",
-      "url": "redis://localhost:6379/0",
+      "url": "redis://redis:6379/0",
       "lock_ttl_sec": 60,
       "lock_acquire_timeout_ms": 500,
       "lock_refresh_interval_ms": 10000
@@ -74,12 +79,13 @@
   "risk_rules": {
     "news": {
       "high_event_block": true,
-      "high_event_min_confidence": 0.7
+      "high_event_min_confidence": 0.7,
+      "high_event_min_sources": 2
     },
     "volatility": {
       "atr_pct_downgrade": 0.5,
       "atr_pct_block": 0.8,
-      "spread_bps_block": 8
+      "spread_bps_block": 8.0
     },
     "time_windows": {
       "deny": ["00:00-00:10Z"]

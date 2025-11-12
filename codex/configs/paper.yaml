@@ -1,0 +1,17 @@
+{
+  "runtime": {
+    "environment": "paper",
+    "quant_only_mode": false
+  },
+  "llm_risk": {
+    "cache": {"ttl_sec": 180},
+    "fallback": {"max_size_multiplier": 0.25}
+  },
+  "news": {
+    "providers": {
+      "twitter": {"enabled": true, "max_items": 150},
+      "reddit": {"enabled": true, "max_items": 120},
+      "news": {"enabled": true, "max_items": 150}
+    }
+  }
+}

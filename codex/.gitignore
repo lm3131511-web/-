@@ -5,3 +5,5 @@ __pycache__/
 .cache
 pytest_cache/
 .codex_cache.db
+data/cache/*.db
+data/logs/*.jsonl

@@ -1,0 +1,16 @@
+{
+  "runtime": {
+    "environment": "canary",
+    "quant_only_mode": false
+  },
+  "llm_risk": {
+    "fallback": {
+      "enable_quant_only_after_failures": 1,
+      "max_size_multiplier": 0.2
+    },
+    "cache": {"ttl_sec": 120}
+  },
+  "news": {
+    "aggregation": {"sentiment_confidence_threshold": 0.55}
+  }
+}

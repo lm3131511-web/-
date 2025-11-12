@@ -19,3 +19,30 @@ json_validation_fail_counter = Counter(
     "codex_json_validation_fail_total",
     "JSON validation failures",
 )
+cache_persist_hit_counter = Counter(
+    "codex_cache_persist_hit_total",
+    "Decisions served from persistent cache",
+)
+cooldown_skip_counter = Counter(
+    "codex_cooldown_skips_total",
+    "LLM invocations avoided due to cooldown",
+)
+correlation_stale_counter = Counter(
+    "codex_correlation_stale_total",
+    "Occurrences of stale correlation inputs",
+)
+news_events_counter = Counter(
+    "codex_news_events_total",
+    "News events ingested by severity",
+    labelnames=("severity",),
+)
+trusted_source_counter = Counter(
+    "codex_trusted_source_used_total",
+    "Trusted source confirmations by provider",
+    labelnames=("provider",),
+)
+size_multiplier_histogram = Histogram(
+    "codex_size_multiplier",
+    "Distribution of size multipliers returned",
+    buckets=(0.0, 0.1, 0.25, 0.5, 0.75, 1.0),
+)

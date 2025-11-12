@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
+
+from .models import DecisionRecord, NewsIngestRecord
 
 
 class JSONLWriter:
@@ -12,9 +14,16 @@ class JSONLWriter:
 
     def append(self, record: dict[str, Any]) -> None:
         with self.path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, sort_keys=True) + "\n")
+            f.write(json.dumps(record, sort_keys=True, default=str) + "\n")
 
 
 class DecisionLog(JSONLWriter):
-    def write_decision(self, decision: dict[str, Any]) -> None:
-        self.append(decision)
+    def write_decision(self, decision: DecisionRecord | dict[str, Any]) -> None:
+        payload = decision.model_dump() if isinstance(decision, DecisionRecord) else decision
+        self.append(payload)
+
+
+class NewsLog(JSONLWriter):
+    def write_event(self, record: NewsIngestRecord | dict[str, Any]) -> None:
+        payload = record.model_dump() if isinstance(record, NewsIngestRecord) else record
+        self.append(payload)

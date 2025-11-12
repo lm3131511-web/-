@@ -12,10 +12,17 @@ from codex.config.loader import load_settings
 def main() -> int:
     base_dir = Path(__file__).resolve().parents[1]
     config_dir = base_dir / "configs"
+    base_path = config_dir / "base.yaml"
     errors = []
-    for path in config_dir.glob("*.yaml"):
+    try:
+        load_settings(base_path)
+    except Exception as exc:  # pragma: no cover - CLI surface
+        errors.append((base_path.name, str(exc)))
+    for path in sorted(config_dir.glob("*.yaml")):
+        if path.name == "base.yaml":
+            continue
         try:
-            load_settings(path)
+            load_settings(base_path, path)
         except Exception as exc:  # pragma: no cover - CLI surface
             errors.append((path.name, str(exc)))
     if errors:
