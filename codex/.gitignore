@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.data
+.cache
+pytest_cache/
+.codex_cache.db

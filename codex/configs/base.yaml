@@ -1,0 +1,94 @@
+{
+  "llm": {
+    "primary": "claude_sonnet",
+    "timeout_ms": 2500,
+    "retry": {"max": 1, "backoff_ms": 250},
+    "max_ctx_tokens": 32000,
+    "output_json_schema": "prompts/schemas/llm_risk_assessment.schema.json"
+  },
+  "llm_risk": {
+    "cooldown_sec": 45,
+    "feature_fingerprint": {
+      "fields": ["regime", "rsi_14", "atr_pct", "spread_bps", "sentiment_score", "event_severity"],
+      "deltas": {
+        "rsi_14": 5.0,
+        "atr_pct": 0.3,
+        "spread_bps": 2,
+        "sentiment_score": 0.4,
+        "event_severity": 1
+      }
+    },
+    "cache": {
+      "ttl_sec": 240,
+      "max_items": 5000,
+      "persistence": {
+        "enabled": true,
+        "backend": "sqlite",
+        "path": "data/cache/codex_cache.db"
+      }
+    },
+    "distributed": {
+      "enabled": true,
+      "backend": "redis",
+      "url": "redis://localhost:6379/0",
+      "lock_ttl_sec": 60,
+      "lock_acquire_timeout_ms": 500,
+      "lock_refresh_interval_ms": 10000
+    },
+    "fallback": {
+      "enable_quant_only_after_failures": 3,
+      "max_size_multiplier": 0.3
+    }
+  },
+  "news": {
+    "providers": {
+      "twitter": {
+        "enabled": true,
+        "max_items": 200,
+        "window_min": 90,
+        "trusted_sources": ["@binance", "@CoinDesk"],
+        "min_followers": 50000
+      },
+      "reddit": {
+        "enabled": true,
+        "max_items": 150,
+        "window_min": 90
+      },
+      "news": {
+        "enabled": true,
+        "max_items": 200,
+        "window_min": 180
+      }
+    },
+    "sanitizer": {
+      "max_chars": 2000,
+      "strip_urls": true,
+      "strip_mentions": true
+    },
+    "aggregation": {
+      "sentiment_confidence_threshold": 0.65,
+      "severity_confirm_min_sources": 2,
+      "severity_levels": ["none", "low", "med", "high"]
+    }
+  },
+  "risk_rules": {
+    "news": {
+      "high_event_block": true,
+      "high_event_min_confidence": 0.7
+    },
+    "volatility": {
+      "atr_pct_downgrade": 0.5,
+      "atr_pct_block": 0.8,
+      "spread_bps_block": 8
+    },
+    "time_windows": {
+      "deny": ["00:00-00:10Z"]
+    },
+    "correlation": {
+      "read_from_cache": true,
+      "block_if_correlated": true,
+      "rho_threshold": 0.8,
+      "stale_penalty_multiplier": 0.5
+    }
+  }
+}
