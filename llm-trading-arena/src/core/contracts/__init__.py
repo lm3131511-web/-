@@ -15,6 +15,7 @@ from .analyst import (
 from .aggregation import AggregationResult, AggregationContributor
 from .execution import ExecutionLeg, ExecutionPlan, AuditInfo
 from .final_decision import FinalDecision, FinalDecisionStatus
+from .referee import RefereeVerdict
 from .risk_gate import RiskGateApproval
 from .signal import Signal
 
@@ -31,6 +32,7 @@ __all__ = [
     "FinalDecision",
     "FinalDecisionStatus",
     "RiskGateApproval",
+    "RefereeVerdict",
     "Signal",
     "generate_json_schemas",
 ]
@@ -41,6 +43,7 @@ def _iter_contracts() -> Iterable[Type[BaseModel]]:
         AnalystResponse,
         AggregationResult,
         Signal,
+        RefereeVerdict,
         RiskGateApproval,
         ExecutionPlan,
         AuditInfo,

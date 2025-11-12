@@ -11,6 +11,7 @@ assets:
   adv_table_asof: "2025-01-01T00:00:00Z"
   adv_grace_sec: 2592000
   hard_notional_cap_usd: 5000
+  adv_usd_table_path: data/adv/adv_usd_table.csv
   top_depth_usd: { BTCUSDT: 5.0e6, ETHUSDT: 3.0e6, SOLUSDT: 1.0e6, XRPUSDT: 0.8e6, BNBUSDT: 1.2e6, ADAUSDT: 0.5e6 }
   clusters: { BTCUSDT: majors, ETHUSDT: majors, SOLUSDT: alts, XRPUSDT: alts, BNBUSDT: majors, ADAUSDT: alts }
 
@@ -43,24 +44,54 @@ llm:
   degradation: { u_enter: 0.55, budget_enter_pct: 8, u_exit: 0.40, budget_exit_pct: 30, min_emergency_min: 15 }
 
 risk_gate:
-  limits: { per_trade_loss_pct: 0.4, per_day_loss_pct: 1.5, max_drawdown_pct: 12.0 }
-  sizing: { pos_cap_per_asset_pct: 1.5, cluster_cap_pct: 3.0 }
-  market: { max_spread_bps: 10 }
-  cooldowns: { after_stop_sec: 900, min_between_trades_sec: 180 }
-  circuit_breakers: { ece_threshold: 0.08, hitrate_drop_window: 200 }
-  pnl_breaker: { day_loss_pct: 0.20, week_loss_pct: 0.6 }
+  limits:
+    per_trade_loss_pct: 0.4
+    per_trade_loss_pct_unit: "%"
+    per_day_loss_pct: 1.5
+    per_day_loss_pct_unit: "%"
+    max_drawdown_pct: 12.0
+    max_drawdown_pct_unit: "%"
+  sizing:
+    pos_cap_per_asset_pct: 1.5
+    pos_cap_per_asset_pct_unit: "%"
+    cluster_cap_pct: 3.0
+    cluster_cap_pct_unit: "%"
+  market:
+    max_spread_bps: 10
+    max_spread_bps_unit: bps
+  cooldowns:
+    after_stop_sec: 900
+    after_stop_sec_unit: sec
+    min_between_trades_sec: 180
+    min_between_trades_sec_unit: sec
+  circuit_breakers:
+    ece_threshold: 0.08
+    ece_threshold_unit: ratio
+    hitrate_drop_window: 200
+    hitrate_drop_window_unit: ticks
+  pnl_breaker:
+    day_loss_pct: 0.20
+    day_loss_pct_unit: "%"
+    week_loss_pct: 0.6
+    week_loss_pct_unit: "%"
 
 execution:
   enforce_exchange_filters: true
   ttl_sec_range: [30, 120]
   price_bands_vol_mult: 2.0
+  price_bands_vol_mult_unit: vol_mult
   minimal_notional_usd: 10
+  minimal_notional_usd_unit: usd
   low_top_depth_usd: 800000
+  low_top_depth_usd_unit: usd
   max_spread_bps: 12
+  max_spread_bps_unit: bps
   strategies: [POST_ONLY, IOC, POV, TWAP]
   strategy_thresholds: { pov_adv_max_pct: 0.3, post_only_spread_frac: 0.5, strong_signal_z: 1.5 }
   post_only_queue_penalty_bps: 0.5
+  post_only_queue_penalty_bps_unit: bps
   max_order_age_ms: 100
+  max_order_age_ms_unit: ms
   slicing:
     enabled: true
     pov_slice_frac_of_curr_vol: 0.10
@@ -93,14 +124,21 @@ logging:
     execution: data/logs/execution.jsonl
     audit: data/logs/audit.jsonl
     alerts: data/logs/alerts.jsonl
+  rotation:
+    max_file_mb: 100
+    max_files_per_stream: 30
+    max_retention_days: 30
 
 monitoring:
   metrics_port: 9108
   health_interval_sec: 15
-  alert_sink: telegram
-  alert_min_level: info
-  alert_dedup_window_sec: 60
-  http: { bind: "127.0.0.1", auth_token_env: HTTP_AUTH_TOKEN, kill_rate_limit_per_min: 1 }
+  http: { bind: "127.0.0.1", auth_token_env: HTTP_AUTH_TOKEN, kill_rate_limit_per_min: 1, kill_file_path: data/kill.switch }
+
+alerts:
+  mode: telegram
+  min_level: info
+  dedup_window_sec: 60
+  webhook_env: ALERT_WEBHOOK_URL
 
 adapters:
   time_sync:

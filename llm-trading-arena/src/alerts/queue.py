@@ -61,17 +61,20 @@ class PersistentAlertQueue:
         self._queue.append(alert)
         self._prune()
         self._persist()
+        self.update_alert_metrics()
 
     def mark_sent(self, alert: QueuedAlert) -> None:
         if alert in self._queue:
             self._queue.remove(alert)
             self._persist()
+            self.update_alert_metrics()
 
     def update(self, alert: QueuedAlert) -> None:
         # ensure alert order persists after updates
         if alert not in self._queue:
             self._queue.append(alert)
         self._persist()
+        self.update_alert_metrics()
 
     def iter_ready(self, now: float | None = None) -> Iterable[QueuedAlert]:
         ref = time.time() if now is None else now
@@ -85,6 +88,7 @@ class PersistentAlertQueue:
             archive = self.path.with_suffix(self.path.suffix + f".{int(time.time())}.bak")
             self.path.replace(archive)
             self._persist()
+        self.update_alert_metrics()
 
     def _persist(self) -> None:
         with self.path.open("w", encoding="utf-8") as handle:
@@ -102,3 +106,11 @@ class PersistentAlertQueue:
                     )
                 )
                 handle.write("\n")
+
+    def update_alert_metrics(self) -> None:
+        try:
+            from ..monitoring.metrics import GLOBAL_METRICS
+
+            GLOBAL_METRICS.update_alert_queue(self.backlog, 0)
+        except Exception:  # pragma: no cover - defensive
+            pass

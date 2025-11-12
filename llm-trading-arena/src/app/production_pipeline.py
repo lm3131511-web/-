@@ -24,6 +24,7 @@ from ..core.contracts import (
     AuditInfo,
     ExecutionPlan,
     FinalDecision,
+    RefereeVerdict,
     RiskGateApproval,
     Signal,
 )
@@ -49,6 +50,7 @@ from ..risk.gate import (
     RiskGate,
     RiskLimits,
 )
+from ..risk.referee import Referee, RefereeLimits
 from ..utils.determinism import project_code_hash
 from ..utils.ids import decision_idempotency_key
 from ..utils.logrotate import ensure_parent, rotate_if_big
@@ -88,17 +90,36 @@ class TradingArena:
         )
         self._risk_gate = RiskGate(
             RiskConfig(
-                limits=RiskLimits(**config.risk_gate.limits),
-                market=MarketLimits(**config.risk_gate.market),
-                pnl_breaker=PnLBreakers(**config.risk_gate.pnl_breaker),
-                cooldowns=CooldownConfig(**config.risk_gate.cooldowns),
-                circuit_breakers=CircuitBreakers(**config.risk_gate.circuit_breakers),
+                limits=RiskLimits(
+                    per_trade_loss_pct=config.risk_gate.limits.per_trade_loss_pct,
+                    per_day_loss_pct=config.risk_gate.limits.per_day_loss_pct,
+                    max_drawdown_pct=config.risk_gate.limits.max_drawdown_pct,
+                ),
+                market=MarketLimits(max_spread_bps=config.risk_gate.market.max_spread_bps),
+                pnl_breaker=PnLBreakers(
+                    day_loss_pct=config.risk_gate.pnl_breaker.day_loss_pct,
+                    week_loss_pct=config.risk_gate.pnl_breaker.week_loss_pct,
+                ),
+                cooldowns=CooldownConfig(
+                    after_stop_sec=config.risk_gate.cooldowns.after_stop_sec,
+                    min_between_trades_sec=config.risk_gate.cooldowns.min_between_trades_sec,
+                ),
+                circuit_breakers=CircuitBreakers(
+                    ece_threshold=config.risk_gate.circuit_breakers.ece_threshold,
+                    hitrate_drop_window=config.risk_gate.circuit_breakers.hitrate_drop_window,
+                ),
             ),
             sell_enabled=config.sell_enabled,
         )
+        self._referee = Referee(
+            limits=RefereeLimits(
+                ttl_range=(config.execution.ttl_sec_range[0], config.execution.ttl_sec_range[1]),
+                allowed_strategies=config.execution.strategies,
+            )
+        )
         self.alert_sink = build_alert_sink(
-            config.monitoring.alert_sink,
-            config.monitoring.model_dump(),
+            config.alerts.mode,
+            config.alerts.model_dump(),
             config.telegram.model_dump(),
             queue_path=self.storage_paths.alerts,
         )
@@ -111,6 +132,7 @@ class TradingArena:
         )
         self._code_hash = project_code_hash(Path(__file__).resolve().parents[1])
         self._seed = int(os.environ.get("ARENA_SEED", "2024"))
+        self._kill_file_path = config.monitoring.http.kill_file_path
         self._kill_switch_state = os.environ.get("KILL_SWITCH", "OFF").upper()
         self._kill_callback_triggered = False
 
@@ -122,9 +144,16 @@ class TradingArena:
         audit = Path(config.logging.paths.audit)
         alerts = Path(config.logging.paths.alerts)
         sqlite_path = base_dir / config.sqlite_path
+        rotation_cfg = config.logging.rotation
+        max_bytes = int(rotation_cfg.max_file_mb * 1_048_576)
         for path in (decisions, execution, audit, alerts, sqlite_path):
             ensure_parent(path)
-            rotate_if_big(path)
+            rotate_if_big(
+                path,
+                max_bytes=max_bytes,
+                max_files=rotation_cfg.max_files_per_stream,
+                max_retention_days=rotation_cfg.max_retention_days,
+            )
         return StoragePaths(
             decisions=decisions,
             execution=execution,
@@ -167,9 +196,8 @@ class TradingArena:
             self._http_server = None
 
     async def run_once(self) -> FinalDecision:
-        if self._kill_switch_state != "OFF" or self._kill_callback_triggered:
-            self._kill_switch_state = "ON"
-            self._health.kill_switch_state = self._kill_switch_state
+        self._refresh_kill_switch_state()
+        if self._kill_switch_state != "OFF":
             raise RuntimeError("kill switch engaged")
 
         tick = await self.adapter.get_next_data()
@@ -227,11 +255,14 @@ class TradingArena:
             symbol=snapshot["symbol"],
         )
         spread_bps = snapshot.get("spread_bps", 0.0)
+        verdict = self._referee.evaluate(primary, signal)
+        if verdict.issues:
+            signal = signal.model_copy(update={"metadata": {**signal.metadata, "referee_issues": verdict.issues}})
         approval = self._risk_gate.approve(
             spread_bps=spread_bps,
             is_buy=signal.side == "BUY",
             losses_pct=0.0,
-            infeasible=signal.final_size_frac <= 0,
+            infeasible=(signal.final_size_frac <= 0) or (not verdict.feasible),
         )
         execution: ExecutionPlan | None = None
         if approval.approved:
@@ -398,6 +429,21 @@ class TradingArena:
         self._health.last_snapshot_id = snapshot_id
         return decision
 
+    def _refresh_kill_switch_state(self) -> None:
+        env_state = os.environ.get("KILL_SWITCH", "OFF").upper()
+        file_state = "OFF"
+        if self._kill_file_path:
+            flag_path = Path(self._kill_file_path)
+            if flag_path.exists():
+                try:
+                    file_state = flag_path.read_text(encoding="utf-8").strip().upper() or "ON"
+                except OSError:
+                    file_state = "ON"
+        triggered_state = "ON" if self._kill_callback_triggered else "OFF"
+        state = "ON" if "ON" in {env_state, file_state, triggered_state} else "OFF"
+        self._kill_switch_state = state
+        self._health.kill_switch_state = state
+
     def _persist_decision(self, decision: FinalDecision) -> None:
         payload = json.dumps(decision.model_dump(), ensure_ascii=False)
         with self.storage_paths.decisions.open("a", encoding="utf-8") as handle:
@@ -426,6 +472,7 @@ class TradingArena:
     def _compose_market_snapshot(self, tick: Dict[str, Any]) -> Dict[str, float]:
         snapshot = build_market_window(tick, config=self.config)
         snapshot.setdefault("ts_utc", now_utc_iso())
+        GLOBAL_METRICS.set_metric("adv_table_stale", bool(snapshot.get("adv_table_stale", False)))
         return snapshot
 
     def _format_alert(self, decision: FinalDecision) -> str:

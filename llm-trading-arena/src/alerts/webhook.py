@@ -42,7 +42,7 @@ class WebhookSink:
         await self._flush()
 
     async def _flush(self) -> None:
-        env_key = str(self.monitoring_cfg.get("alert_webhook_env", "ALERT_WEBHOOK_URL"))
+        env_key = str(self.monitoring_cfg.get("webhook_env", "ALERT_WEBHOOK_URL"))
         url = os.environ.get(env_key)
         if not url:
             return

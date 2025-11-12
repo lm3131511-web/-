@@ -8,3 +8,6 @@
 6. **Promotion readiness** — Seven-day canary soak meets reject-rate, calibration, and latency SLOs prior to live promotion.
 7. **Prompt telemetry** — `/metrics.json` exposes `prompt_versions`, `prompt_hashes`, and stage cost fields (`llm_cost_per_min_{A,B,C}`) with `llm_json_repair_rate < 0.01`.
 8. **Schema guard** — Removing or corrupting `prompts/system.md` causes startup validation to fail, preventing execution.
+9. **Alert configuration** — For `canary` and `live` configs, `alerts.mode` MUST be `telegram` or `webhook`; any deployment with `none` is rejected during validation.
+10. **ADV freshness** — `/metrics.json.adv_table_stale` reflects the current ADV status and, when `true`, `hard_notional_cap_usd` is enforced and documented in the runbook.
+11. **Log hygiene** — JSONL streams rotate per `logging.rotation` defaults (100 MB / 30 files / 30 days) with archives present under `data/logs/archive/` and no unbounded growth during acceptance testing.

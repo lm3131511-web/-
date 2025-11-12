@@ -51,6 +51,7 @@ class MetricsRegistry:
             "llm_completion_total": 0,
             "llm_json_repairs_total": 0,
             "budget_sentry_hits": 0,
+            "adv_table_stale": False,
         }
 
     def set_metric(self, name: str, value: Any) -> None:

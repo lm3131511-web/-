@@ -66,13 +66,55 @@ class LLMConfig(BaseModel):
     mock_mode: bool = False
 
 
+class RiskLimitsConfig(BaseModel):
+    per_trade_loss_pct: float
+    per_trade_loss_pct_unit: str = "%"
+    per_day_loss_pct: float
+    per_day_loss_pct_unit: str = "%"
+    max_drawdown_pct: float
+    max_drawdown_pct_unit: str = "%"
+
+
+class RiskSizingConfig(BaseModel):
+    pos_cap_per_asset_pct: float
+    pos_cap_per_asset_pct_unit: str = "%"
+    cluster_cap_pct: float
+    cluster_cap_pct_unit: str = "%"
+
+
+class RiskMarketConfig(BaseModel):
+    max_spread_bps: float
+    max_spread_bps_unit: str = "bps"
+
+
+class RiskCooldownConfig(BaseModel):
+    after_stop_sec: float
+    after_stop_sec_unit: str = "sec"
+    min_between_trades_sec: float
+    min_between_trades_sec_unit: str = "sec"
+
+
+class RiskCircuitBreakersConfig(BaseModel):
+    ece_threshold: float
+    ece_threshold_unit: str = "ratio"
+    hitrate_drop_window: int
+    hitrate_drop_window_unit: str = "ticks"
+
+
+class RiskPnLBreakerConfig(BaseModel):
+    day_loss_pct: float
+    day_loss_pct_unit: str = "%"
+    week_loss_pct: float
+    week_loss_pct_unit: str = "%"
+
+
 class RiskGateConfig(BaseModel):
-    limits: Dict[str, float]
-    sizing: Dict[str, float]
-    market: Dict[str, float]
-    cooldowns: Dict[str, float]
-    circuit_breakers: Dict[str, float]
-    pnl_breaker: Dict[str, float]
+    limits: RiskLimitsConfig
+    sizing: RiskSizingConfig
+    market: RiskMarketConfig
+    cooldowns: RiskCooldownConfig
+    circuit_breakers: RiskCircuitBreakersConfig
+    pnl_breaker: RiskPnLBreakerConfig
 
 
 class SlicingPerAssetConfig(BaseModel):
@@ -92,13 +134,19 @@ class ExecutionConfigModel(BaseModel):
     enforce_exchange_filters: bool
     ttl_sec_range: List[int]
     price_bands_vol_mult: float
+    price_bands_vol_mult_unit: str = "vol_mult"
     minimal_notional_usd: float
+    minimal_notional_usd_unit: str = "usd"
     low_top_depth_usd: float
+    low_top_depth_usd_unit: str = "usd"
     max_spread_bps: float
+    max_spread_bps_unit: str = "bps"
     strategies: List[str]
     strategy_thresholds: Dict[str, float]
     post_only_queue_penalty_bps: float
+    post_only_queue_penalty_bps_unit: str = "bps"
     max_order_age_ms: int
+    max_order_age_ms_unit: str = "ms"
     slicing: SlicingConfig
 
 
@@ -140,24 +188,35 @@ class LoggingPaths(BaseModel):
     alerts: str
 
 
+class LogRotationConfig(BaseModel):
+    max_file_mb: int = 100
+    max_files_per_stream: int = 30
+    max_retention_days: int = 30
+
+
 class LoggingConfig(BaseModel):
     level: str
     paths: LoggingPaths
+    rotation: LogRotationConfig = LogRotationConfig()
 
 
 class MonitoringHTTPConfig(BaseModel):
     bind: str = "127.0.0.1"
     auth_token_env: str | None = None
     kill_rate_limit_per_min: int = 1
+    kill_file_path: Optional[str] = None
 
 
 class MonitoringConfig(BaseModel):
     metrics_port: int
     health_interval_sec: int
-    alert_sink: str
-    alert_min_level: str
-    alert_dedup_window_sec: int
     http: MonitoringHTTPConfig
+
+
+class AlertsConfig(BaseModel):
+    mode: str = "none"
+    min_level: str = "info"
+    dedup_window_sec: int = 60
 
 
 class TimeSyncNTPConfig(BaseModel):
@@ -214,6 +273,7 @@ class AppConfig(BaseModel):
     order_management: OrderManagementConfig
     logging: LoggingConfig
     monitoring: MonitoringConfig
+    alerts: AlertsConfig
     adapters: AdaptersConfig
     exchange: ExchangeConfig
     telegram: TelegramConfig

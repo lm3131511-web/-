@@ -3,6 +3,10 @@ from __future__ import annotations
 from statistics import pstdev
 from typing import Any, Dict, Iterable, Sequence
 
+from datetime import datetime, timezone
+from statistics import pstdev
+from typing import Any, Dict, Iterable, Sequence
+
 from ..risk.spread_filter import calculate_spread_bps
 from ..utils.time import now_utc_iso
 
@@ -43,6 +47,23 @@ def _order_imbalance(tick: Dict[str, Any]) -> float:
     if total <= 0:
         return 0.0
     return (bid_depth - ask_depth) / total
+
+
+def _adv_table_is_stale(config: Any) -> bool:
+    assets = getattr(config, "assets", {})
+    if not isinstance(assets, dict):
+        assets = dict(assets)
+    adv_asof = assets.get("adv_table_asof")
+    grace = float(assets.get("adv_grace_sec", 0) or 0)
+    if not adv_asof or grace <= 0:
+        return False
+    try:
+        parsed = datetime.fromisoformat(str(adv_asof).replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    now = datetime.now(timezone.utc)
+    delta = (now - parsed).total_seconds()
+    return delta > grace
 
 
 def build_market_window(tick: Dict[str, Any], *, config: Any) -> Dict[str, float]:
@@ -87,5 +108,6 @@ def build_market_window(tick: Dict[str, Any], *, config: Any) -> Dict[str, float
         "last_trades_summary": _summarize_trades(last_trades),
         "on_demand_features_count": int(tick.get("on_demand_features_count", 0)),
         "ts_utc": tick.get("ts_utc", now_utc_iso()),
+        "adv_table_stale": _adv_table_is_stale(config),
     }
     return snapshot
