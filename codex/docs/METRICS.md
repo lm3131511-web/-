@@ -1,6 +1,7 @@
 # Metrics
 
-Codex publishes Prometheus metrics via `/metrics`.
+Codex publishes Prometheus metrics via `/metrics`. The emitters live in
+`codex/src/codex/monitoring/metrics.py`.
 
 - `codex_llm_latency_ms` histogram — latency of LLM calls (ms).
 - `codex_llm_verdict_total{verdict}` counter — count of verdicts returned.

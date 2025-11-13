@@ -8,39 +8,47 @@ criteria.
 The service is model-agnostic and ships with Claude Sonnet as the primary provider. Alternative providers can be
 configured without code changes.
 
-## Quick start
+## Project layout
+- Код пакета: `codex/src/codex/...`
+- Конфиги: `codex/configs/*.yaml`
+- Промпты и схемы: `codex/prompts/...`
+- Документация: `codex/docs/...`
+- Тесты: `codex/tests/...`
+- Инфраструктура: `codex/docker/*`, `codex/docker-compose.yml`
+
+## Quick start (локально)
+# Команды предполагают запуск из корня монорепозитория (на уровень выше `codex/`).
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[test]
-cp .env.example .env  # populate provider credentials via vault/sops
-python scripts/check_config.py
-pytest
-```
-
-To run the API locally:
-
-```bash
+cp codex/.env.example .env  # populate provider credentials via vault/sops
+PYTHONPATH=codex/src python codex/scripts/check_config.py
+PYTHONPATH=codex/src pytest -q
 uvicorn codex.app:app --reload
+curl -s http://localhost:8000/health
 ```
 
 ## Docker
-
-The repository ships with production-ready Dockerfiles for the API and the optional news ingest worker. A local stack is
-available via docker-compose:
-
 ```bash
-docker compose up --build
+docker compose -f codex/docker-compose.yml up --build
+curl -s http://localhost:8000/health
+curl -s http://localhost:8000/metrics | head
 ```
 
-This starts the FastAPI service, the ingest worker, Redis, and Prometheus. Health is exposed at `http://localhost:8000/health`
-and metrics at `http://localhost:8000/metrics`.
+## Data directories
+Рабочие файлы создаются на лету:
+- `codex/data/logs/decisions.jsonl`
+- `codex/data/logs/news_ingest.jsonl`
+- `codex/data/cache/codex_cache.db`
+
+В репозитории лежат `.gitkeep`, чтобы каталоги существовали в чистом клоне.
 
 ## Tests
 
 The suite covers unit, integration, stress, and property tests.
 
 ```bash
-PYTHONPATH=src pytest
+PYTHONPATH=codex/src pytest
 ```

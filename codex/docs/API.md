@@ -1,6 +1,7 @@
 # API
 
-Codex exposes a minimal HTTP surface.
+Codex exposes a minimal HTTP surface implemented in `codex/src/codex/app.py` and
+`codex/src/codex/monitoring/health.py`.
 
 ## `POST /assess`
 
