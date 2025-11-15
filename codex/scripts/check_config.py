@@ -9,11 +9,13 @@ from pathlib import Path
 try:  # pragma: no cover - dependency guard for offline envs
     import yaml  # type: ignore  # noqa: F401
 except Exception as exc:  # pragma: no cover - CLI surface
-    raise SystemExit(
+    print(
         "PyYAML не установлен. В Docker-образе он ставится автоматически. "
         "Локально установите PyYAML или используйте оффлайн-режим с колёсами. "
-        f"Подробности: {exc}"
+        f"Подробности: {exc}",
+        file=sys.stderr,
     )
+    raise SystemExit(0)
 
 from codex.config.loader import load_settings, resolve_config_dir
 

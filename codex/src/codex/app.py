@@ -4,6 +4,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import REGISTRY, generate_latest
 
+try:  # pragma: no cover - prefer official constant when available
+    from prometheus_client.exposition import CONTENT_TYPE_LATEST  # type: ignore
+except Exception:  # pragma: no cover - fallback for older/newer clients
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
 from .config.loader import load_settings
 from .config.models import Settings
 from .contracts.features import DeterministicFeatures, MetaContext
@@ -37,10 +42,7 @@ async def health() -> JSONResponse:
 @app.get("/metrics")
 async def metrics() -> PlainTextResponse:
     payload = generate_latest(REGISTRY)
-    return PlainTextResponse(
-        content=payload,
-        media_type="text/plain; version=0.0.4; charset=utf-8",
-    )
+    return PlainTextResponse(content=payload, media_type=CONTENT_TYPE_LATEST)
 
 
 @app.post("/risk")
