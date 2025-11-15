@@ -7,13 +7,19 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 COPY pyproject.toml ./
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir \
+        "fastapi==0.115.2" \
+        "starlette==0.40.0" \
+        "uvicorn[standard]==0.32.0" \
+        "anyio==4.6.2.post1"
+
 COPY src ./src
 COPY prompts ./prompts
 COPY configs ./configs
 COPY taxonomy ./taxonomy
 COPY scripts ./scripts
 
-RUN pip install --upgrade pip \
-    && pip install .
+RUN pip install --no-cache-dir .
 
 CMD ["python", "-m", "codex.news_pipeline.ingest"]
