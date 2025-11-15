@@ -27,6 +27,12 @@ def client(monkeypatch):
 def test_health_endpoint_reports_ok(client):
     response = client.get("/health")
     assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_healthz_reports_details(client):
+    response = client.get("/healthz/health")
+    assert response.status_code == 200
     payload = response.json()
     assert payload["redis"] in {"ok", "unknown"}
     assert payload["prompt_version"] == "v2.2.0"

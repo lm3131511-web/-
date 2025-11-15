@@ -28,4 +28,9 @@ class JSONResponse(Response):
         return self._json
 
 
-__all__ = ["Response", "JSONResponse"]
+class PlainTextResponse(Response):
+    def __init__(self, content: bytes | str, *, status_code: int = 200, media_type: str = "text/plain; version=0.0.4; charset=utf-8") -> None:
+        super().__init__(content, media_type=media_type, status_code=status_code)
+
+
+__all__ = ["Response", "JSONResponse", "PlainTextResponse"]

@@ -11,6 +11,7 @@ router = APIRouter()
 
 
 @router.get("/health")
+@router.get("/")
 async def health(request: Request) -> dict[str, object]:
     app = request.app
     settings = getattr(app.state, "settings", None)
