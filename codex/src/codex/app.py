@@ -3,7 +3,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import REGISTRY, generate_latest
+from prometheus_client.exposition import CONTENT_TYPE_LATEST
 
 from .config.loader import load_settings
 from .config.models import Settings
@@ -11,10 +14,10 @@ from .contracts.features import DeterministicFeatures, MetaContext
 from .contracts.sentiment import AggregatedSentiment
 from .llm_risk.client import LLMRiskClient
 from .monitoring.metrics import cache_hit_counter, fallback_counter, llm_latency, verdict_counter
-from .monitoring.health import router as health_router
+from .monitoring.health import health as detailed_health, router as health_router
 
-app = FastAPI(title="Codex Risk Service")
-app.include_router(health_router)
+app = FastAPI(title="codex-app", version="1.0.0")
+app.include_router(health_router, prefix="/healthz")
 
 
 def _load_settings() -> Settings:
@@ -30,6 +33,20 @@ def _load_settings() -> Settings:
 @app.on_event("startup")
 def _populate_state() -> None:
     app.state.settings = _load_settings()
+
+
+@app.get("/health")
+async def health(request: Request) -> JSONResponse:
+    details = await detailed_health(request)
+    status_value = "ok" if details.get("ok", True) else "fail"
+    payload = {"status": status_value, **details}
+    return JSONResponse(payload, status_code=200)
+
+
+@app.get("/metrics")
+async def metrics() -> Response:
+    payload = generate_latest(REGISTRY)
+    return Response(content=payload, media_type=CONTENT_TYPE_LATEST)
 
 
 @app.post("/risk")

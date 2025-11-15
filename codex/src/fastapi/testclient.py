@@ -5,6 +5,7 @@ import inspect
 from typing import Any
 
 from . import FastAPI, Request
+from .responses import Response as FastAPIResponse
 
 
 class Response:
@@ -62,6 +63,10 @@ class TestClient:
         result = endpoint(**kwargs)
         if asyncio.iscoroutine(result):
             result = asyncio.run(result)
-        status_code = 200 if not isinstance(result, Response) else result.status_code
-        data = result if not isinstance(result, Response) else result.json()
+        if isinstance(result, FastAPIResponse):
+            status_code = result.status_code
+            data = result.json()
+        else:
+            status_code = 200 if not isinstance(result, Response) else result.status_code
+            data = result if not isinstance(result, Response) else result.json()
         return Response(status_code, data)

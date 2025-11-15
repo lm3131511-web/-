@@ -35,7 +35,7 @@ class _Status:
 status = _Status()
 
 
-def Depends(dependency: Callable[..., Any]) -> Callable[..., Any]:  # pragma: no cover - behaves as identity for tests
+def Depends(dependency: Callable[..., Any]) -> Callable[..., Any]:  # pragma: no cover - identity for tests
     return dependency
 
 
@@ -90,8 +90,10 @@ class FastAPI(APIRouter):
         self.state = SimpleNamespace()
         self._startup_handlers: List[Callable[[], Any]] = []
 
-    def include_router(self, router: APIRouter) -> None:
-        self.routes.update(router.routes)
+    def include_router(self, router: APIRouter, *, prefix: str = "") -> None:
+        for (method, path), route in router.routes.items():
+            full_path = f"{prefix}{path}" if prefix else path
+            self.routes[(method, full_path)] = route
 
     def on_event(self, _event: str) -> Callable[[Callable[[], Any]], Callable[[], Any]]:
         def decorator(func: Callable[[], Any]) -> Callable[[], Any]:
@@ -99,6 +101,9 @@ class FastAPI(APIRouter):
             return func
 
         return decorator
+
+    async def __call__(self, request: Request) -> Any:  # pragma: no cover - ASGI stub
+        raise NotImplementedError("The stub FastAPI application is not ASGI callable")
 
 
 __all__ = [

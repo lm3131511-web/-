@@ -14,7 +14,10 @@ COPY taxonomy ./taxonomy
 COPY docs ./docs
 COPY scripts ./scripts
 
-RUN pip install --upgrade pip \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --upgrade pip \
     && pip install .
 
 EXPOSE 8000
