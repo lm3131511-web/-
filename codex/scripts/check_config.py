@@ -15,13 +15,22 @@ except Exception as exc:  # pragma: no cover - CLI surface
         f"Подробности: {exc}"
     )
 
-from codex.config.loader import load_settings
+from codex.config.loader import load_settings, resolve_config_dir
 
 
 def main() -> int:
-    base_dir = Path(__file__).resolve().parents[1]
-    config_dir = base_dir / "configs"
+    config_dir = resolve_config_dir()
+    if not config_dir.is_dir():
+        print(
+            "Конфиги не найдены. Укажите CODEX_CONFIG_DIR или скопируйте папку configs в образ.",
+            file=sys.stderr,
+        )
+        return 2
+
     base_path = config_dir / "base.yaml"
+    if not base_path.is_file():
+        print(f"Не найден base.yaml по пути {base_path}.", file=sys.stderr)
+        return 3
     errors = []
     try:
         load_settings(base_path)

@@ -1,16 +1,8 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import REGISTRY, generate_latest
-
-try:  # pragma: no cover - import fallback
-    from prometheus_client.exposition import CONTENT_TYPE_LATEST
-except Exception:  # pragma: no cover - fallback for older/newer prometheus_client
-    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 
 from .config.loader import load_settings
 from .config.models import Settings
@@ -25,18 +17,16 @@ app.include_router(health_router, prefix="/healthz")
 
 
 def _load_settings() -> Settings:
-    config_root = Path(__file__).resolve().parents[2] / "configs"
-    base_path = config_root / "base.yaml"
-    env = os.getenv("CODEX_ENV")
-    overlay_path = config_root / f"{env}.yaml" if env else None
-    if overlay_path and not overlay_path.exists():
-        overlay_path = None
-    return load_settings(base_path, overlay_path)
+    settings = getattr(app.state, "settings", None)
+    if settings is None:
+        settings = load_settings()
+        app.state.settings = settings
+    return settings
 
 
 @app.on_event("startup")
 def _populate_state() -> None:
-    app.state.settings = _load_settings()
+    app.state.settings = load_settings()
 
 
 @app.get("/health")
@@ -47,7 +37,10 @@ async def health() -> JSONResponse:
 @app.get("/metrics")
 async def metrics() -> PlainTextResponse:
     payload = generate_latest(REGISTRY)
-    return PlainTextResponse(content=payload, media_type=CONTENT_TYPE_LATEST)
+    return PlainTextResponse(
+        content=payload,
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @app.post("/risk")

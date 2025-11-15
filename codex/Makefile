@@ -1,4 +1,7 @@
-.PHONY: up down rebuild logs test
+.PHONY: build up down rebuild logs test
+
+build:
+	docker compose build --no-cache
 
 up:
 	docker compose up -d

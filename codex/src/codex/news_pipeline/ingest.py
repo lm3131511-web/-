@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, List, Mapping, MutableMapping
 
-from ..config.loader import load_settings
+from ..config.loader import load_settings, resolve_config_path
 from ..config.models import NewsConfig, ProviderConfig, Settings
 from ..contracts.sentiment import SentimentEvent
 from ..monitoring.metrics import news_events_counter
@@ -96,11 +96,10 @@ async def run_ingest(config: NewsConfig, *, interval_sec: int, overrides: Mappin
 
 
 def load_settings_for_env(env: str) -> Settings:
-    root = Path(__file__).resolve().parents[3]
-    base_path = root / "configs" / "base.yaml"
-    overlay_path = root / "configs" / f"{env}.yaml"
-    overlay = overlay_path if overlay_path.exists() else None
-    return load_settings(base_path, overlay)
+    overlay_path = resolve_config_path(f"{env}.yaml")
+    if not overlay_path.is_file():
+        overlay_path = None
+    return load_settings(overlay=overlay_path)
 
 
 def parse_args() -> argparse.Namespace:

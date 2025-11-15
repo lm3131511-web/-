@@ -2,7 +2,8 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    CODEX_ENV=live
+    CODEX_ENV=live \
+    CODEX_CONFIG_DIR=/app/configs
 
 WORKDIR /app
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config.loader import load_settings
+from .config.loader import load_settings, resolve_config_path
 from .config.models import Settings
 from .llm_risk.cache_persist import SQLiteCachePersistor
 from .llm_risk.client import LLMRiskClient
@@ -21,10 +21,12 @@ class BootstrapState:
 
 def bootstrap(env: str | None = None) -> BootstrapState:
     root = Path(__file__).resolve().parents[2]
-    config_dir = root / "configs"
-    base_path = config_dir / "base.yaml"
-    overlay_path = config_dir / f"{env}.yaml" if env else None
-    settings = load_settings(base_path, overlay_path if overlay_path and overlay_path.exists() else None)
+    overlay_path = None
+    if env:
+        candidate = resolve_config_path(f"{env}.yaml")
+        if candidate.is_file():
+            overlay_path = candidate
+    settings = load_settings(overlay=overlay_path)
 
     cache_path = root / settings.llm_risk.cache.persistence.path
     persistor = SQLiteCachePersistor(str(cache_path))
