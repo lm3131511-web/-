@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -130,5 +131,9 @@ class Settings(BaseModel):
     def prompt_version(self) -> str:
         return "v2.2.0"
 
-    def json_schema_path(self) -> str:
-        return self.llm.output_json_schema
+    def json_schema_path(self) -> Path:
+        schema_path = Path(self.llm.output_json_schema)
+        if not schema_path.is_absolute():
+            root = Path(__file__).resolve().parents[3]
+            schema_path = root / schema_path
+        return schema_path

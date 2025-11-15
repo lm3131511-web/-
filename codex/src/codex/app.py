@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -10,13 +11,25 @@ from .contracts.features import DeterministicFeatures, MetaContext
 from .contracts.sentiment import AggregatedSentiment
 from .llm_risk.client import LLMRiskClient
 from .monitoring.metrics import cache_hit_counter, fallback_counter, llm_latency, verdict_counter
+from .monitoring.health import router as health_router
 
 app = FastAPI(title="Codex Risk Service")
+app.include_router(health_router)
 
 
 def _load_settings() -> Settings:
-    config_path = Path(__file__).resolve().parents[2] / "configs" / "base.yaml"
-    return load_settings(config_path)
+    config_root = Path(__file__).resolve().parents[2] / "configs"
+    base_path = config_root / "base.yaml"
+    env = os.getenv("CODEX_ENV")
+    overlay_path = config_root / f"{env}.yaml" if env else None
+    if overlay_path and not overlay_path.exists():
+        overlay_path = None
+    return load_settings(base_path, overlay_path)
+
+
+@app.on_event("startup")
+def _populate_state() -> None:
+    app.state.settings = _load_settings()
 
 
 @app.post("/risk")
