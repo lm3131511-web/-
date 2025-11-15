@@ -2,7 +2,7 @@
 
 ## Cold Start / Post-Rollback
 1. Flush Redis fingerprint and correlation caches.
-2. Run correlation pre-computation job (placeholder `_perform_cold_start()` hook in `codex/src/codex/bootstrap.py`).
+2. Run correlation pre-computation job (placeholder `_perform_cold_start()` hook in `src/codex/bootstrap.py`).
 3. Enable `quant_only_mode` for 15 minutes to warm caches.
 4. Monitor `codex_cache_persist_hit_total` and `codex_cache_hit_total`; re-enable LLM evaluation when both counters rise.
 

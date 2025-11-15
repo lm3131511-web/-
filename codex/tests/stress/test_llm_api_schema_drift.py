@@ -8,7 +8,7 @@ from codex.llm_risk.providers.base import LLMProvider
 
 
 class DriftProvider(LLMProvider):
-    name = "drift"
+    name = "qwen"
 
     async def complete(self, payload):
         return {
@@ -20,7 +20,8 @@ class DriftProvider(LLMProvider):
 
 def test_schema_drift_detected(settings: Settings):
     registry = ProviderRegistry([DriftProvider()])
-    settings.llm.primary = "drift"
+    settings.llm.primary = "qwen"
+    settings.llm.fallback_chain = []
     client = LLMRiskClient(settings, registry=registry)
     features = DeterministicFeatures(regime="normal", rsi_14=41, atr_pct=0.2, spread_bps=2)
     sentiment = AggregatedSentiment(sentiment_score=0.0, event_severity="none", confidence=0.5, sources_confirmed=0)

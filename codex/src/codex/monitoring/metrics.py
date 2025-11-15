@@ -6,18 +6,24 @@ from prometheus_client import Counter, Histogram
 llm_latency = Histogram(
     "codex_llm_latency_ms",
     "LLM latency in milliseconds",
+    labelnames=("provider",),
     buckets=(50, 100, 250, 500, 1000, 2000, 4000),
 )
 verdict_counter = Counter(
     "codex_llm_verdict_total",
     "Total decisions returned by the LLM",
-    labelnames=("verdict",),
+    labelnames=("provider", "verdict"),
 )
 cache_hit_counter = Counter("codex_cache_hit_total", "Cache hits served", labelnames=("source",))
-fallback_counter = Counter("codex_fallback_total", "Fallback decisions", labelnames=("reason",))
+fallback_counter = Counter(
+    "codex_fallback_total",
+    "Fallback decisions produced or capped",
+    labelnames=("provider",),
+)
 json_validation_fail_counter = Counter(
     "codex_json_validation_fail_total",
     "JSON validation failures",
+    labelnames=("provider",),
 )
 cache_persist_hit_counter = Counter(
     "codex_cache_persist_hit_total",
@@ -45,4 +51,9 @@ size_multiplier_histogram = Histogram(
     "codex_size_multiplier",
     "Distribution of size multipliers returned",
     buckets=(0.0, 0.1, 0.25, 0.5, 0.75, 1.0),
+)
+adapter_error_counter = Counter(
+    "codex_adapter_error_total",
+    "Provider adapter errors",
+    labelnames=("provider",),
 )

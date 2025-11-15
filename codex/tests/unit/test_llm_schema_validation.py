@@ -9,7 +9,7 @@ from codex.llm_risk.client import ProviderRegistry
 
 
 class BrokenProvider(LLMProvider):
-    name = "broken"
+    name = "qwen"
 
     async def complete(self, payload):
         return {"verdict": "CONFIRM"}
@@ -17,7 +17,8 @@ class BrokenProvider(LLMProvider):
 
 def test_invalid_schema_triggers_fallback(settings: Settings):
     registry = ProviderRegistry([BrokenProvider()])
-    settings.llm.primary = "broken"
+    settings.llm.primary = "qwen"
+    settings.llm.fallback_chain = []
     client = LLMRiskClient(settings, registry=registry)
     features = DeterministicFeatures(regime="normal", rsi_14=45, atr_pct=0.2, spread_bps=3)
     sentiment = AggregatedSentiment(sentiment_score=0.1, event_severity="low", confidence=0.5, sources_confirmed=1)

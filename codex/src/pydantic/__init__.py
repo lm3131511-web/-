@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, get_args, get_origin, get_type_hints
 
 
+class ConfigDict(dict):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(kwargs)
+
+
 @dataclass
 class FieldInfo:
     default: Any = ...
@@ -11,10 +16,19 @@ class FieldInfo:
     ge: float | None = None
     le: float | None = None
     max_length: int | None = None
+    alias: Optional[str] = None
 
 
-def Field(default: Any = ..., *, default_factory: Callable[[], Any] | None = None, ge: float | None = None, le: float | None = None, max_length: int | None = None) -> FieldInfo:
-    return FieldInfo(default=default, default_factory=default_factory, ge=ge, le=le, max_length=max_length)
+def Field(
+    default: Any = ...,
+    *,
+    default_factory: Callable[[], Any] | None = None,
+    ge: float | None = None,
+    le: float | None = None,
+    max_length: int | None = None,
+    alias: str | None = None,
+) -> FieldInfo:
+    return FieldInfo(default=default, default_factory=default_factory, ge=ge, le=le, max_length=max_length, alias=alias)
 
 
 class ValidationError(ValueError):
@@ -38,6 +52,8 @@ class BaseModel:
                 field_info = FieldInfo(default=info)
             if name in data:
                 value = data[name]
+            elif field_info.alias and field_info.alias in data:
+                value = data[field_info.alias]
             elif field_info.default is not ...:
                 value = field_info.default
             elif field_info.default_factory is not None:
@@ -91,6 +107,11 @@ class BaseModel:
         if isinstance(annotation, type) and issubclass(annotation, BaseModel):
             if isinstance(value, dict):
                 return annotation(**value)
+        if annotation in {int, float, bool}:
+            try:
+                return annotation(value)
+            except (TypeError, ValueError):
+                return value
         if origin is list and isinstance(value, list):
             (inner,) = get_args(annotation) or (Any,)
             return [cls._coerce(inner, item) for item in value]

@@ -5,6 +5,7 @@ from codex.persistence.models import DecisionRecord, NewsIngestRecord
 def test_decision_record_serialises_to_json():
     record = DecisionRecord(
         prompt_version="v2.2.0",
+        provider="qwen",
         verdict="CONFIRM",
         size_multiplier=1.0,
         risk_tags=["volatility_spike"],

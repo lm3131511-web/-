@@ -2,21 +2,35 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from .base import LLMProvider
+from .base import HTTPPromptProvider
+from .errors import ProviderResponseError
 
 
-class QwenProvider(LLMProvider):
+class QwenProvider(HTTPPromptProvider):
     name = "qwen"
+    endpoint_path = "/chat/completions"
+
+    def __init__(self, settings, system_prompt: str, client_factory=None) -> None:
+        super().__init__(settings, system_prompt, self.name, client_factory)
 
     async def complete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "verdict": "CONFIRM",
-            "size_multiplier": 0.8,
-            "risk_tags": [],
-            "short_reason": "qwen fallback decision",
-            "prompt_version": "v2.2.0",
-            "cache_hit": False,
-            "latency_ms": 0,
-            "is_fallback": True,
-            "stale_correlation": payload.get("stale_correlation", False),
+        headers = {
+            "Authorization": f"Bearer {self._api_key()}",
+            "Content-Type": "application/json",
         }
+        body: Dict[str, Any] = {
+            "model": self.config.model,
+            "temperature": 0,
+            "messages": [
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": self._format_payload(payload)},
+            ],
+        }
+        if self.config.compatible_mode:
+            body["response_format"] = {"type": "json_object"}
+        data = await self._post_json(headers, body)
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise ProviderResponseError("Qwen response missing message content") from exc
+        return self._parse_content(content)

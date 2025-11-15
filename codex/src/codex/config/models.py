@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class RetryConfig(BaseModel):
@@ -17,6 +17,7 @@ class LLMConfig(BaseModel):
     retry: RetryConfig = Field(default_factory=RetryConfig)
     max_ctx_tokens: int = Field(ge=0, default=32000)
     output_json_schema: str
+    fallback_chain: List[str] = Field(default_factory=list)
 
 
 class RuntimeConfig(BaseModel):
@@ -120,12 +121,24 @@ class RiskRulesConfig(BaseModel):
     correlation: CorrelationRuleConfig
 
 
+class LLMProviderConfig(BaseModel):
+    base_url: str
+    api_key_env: str
+    model: str
+    compatible_mode: bool = True
+    api_version: Optional[str] = None
+    max_output_tokens: Optional[int] = None
+
+
 class Settings(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
     llm: LLMConfig
     llm_risk: LLMRiskConfig
     news: NewsConfig
     risk_rules: RiskRulesConfig
+    llm_providers: Dict[str, LLMProviderConfig] = Field(alias="providers")
 
     @property
     def prompt_version(self) -> str:
@@ -137,3 +150,13 @@ class Settings(BaseModel):
             root = Path(__file__).resolve().parents[3]
             schema_path = root / schema_path
         return schema_path
+
+    def prompt_path(self) -> Path:
+        root = Path(__file__).resolve().parents[3]
+        filename = f"system_risk_{self.prompt_version}.md"
+        return root / "prompts" / filename
+
+    def get_llm_provider(self, name: str) -> LLMProviderConfig:
+        if name not in self.llm_providers:
+            raise KeyError(f"LLM provider '{name}' is not configured")
+        return self.llm_providers[name]

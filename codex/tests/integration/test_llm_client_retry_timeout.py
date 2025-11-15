@@ -5,18 +5,20 @@ from codex.contracts.features import DeterministicFeatures, MetaContext
 from codex.contracts.sentiment import AggregatedSentiment
 from codex.llm_risk.client import LLMRiskClient, ProviderRegistry
 from codex.llm_risk.providers.base import LLMProvider
+from codex.llm_risk.providers.errors import ProviderTransportError
 
 
 class FlakyProvider(LLMProvider):
-    name = "flaky"
+    name = "qwen"
 
     async def complete(self, payload):
-        raise RuntimeError("transient failure")
+        raise ProviderTransportError("transient failure")
 
 
 def test_retry_recovers(settings: Settings):
     provider = FlakyProvider()
     settings.llm.primary = provider.name
+    settings.llm.fallback_chain = []
     registry = ProviderRegistry([provider])
     client = LLMRiskClient(settings, registry=registry)
     features = DeterministicFeatures(regime="normal", rsi_14=44, atr_pct=0.3, spread_bps=2)

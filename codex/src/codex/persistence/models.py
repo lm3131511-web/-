@@ -17,6 +17,7 @@ class CacheEntry(BaseModel):
 class DecisionRecord(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     prompt_version: str
+    provider: str
     verdict: str
     size_multiplier: float
     risk_tags: List[str]

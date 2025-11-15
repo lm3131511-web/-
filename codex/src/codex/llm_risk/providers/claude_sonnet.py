@@ -2,36 +2,51 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from .base import LLMProvider
+from .base import HTTPPromptProvider
+from .errors import ProviderResponseError
 
 
-class ClaudeSonnetProvider(LLMProvider):
-    name = "claude_sonnet"
+class ClaudeSonnetProvider(HTTPPromptProvider):
+    name = "claude"
+    endpoint_path = "/v1/messages"
+
+    def __init__(self, settings, system_prompt: str, client_factory=None) -> None:
+        super().__init__(settings, system_prompt, self.name, client_factory)
 
     async def complete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        # In production this would call the Anthropic API. For the reference implementation we
-        # simulate a deterministic decision that mirrors the configured risk gates.
-        sentiment = payload["sentiment"]
-        features = payload["features"]
-        verdict = "CONFIRM"
-        tags: list[str] = []
-        size_multiplier = 1.0
-        if sentiment["event_severity"] == "high" or sentiment["sentiment_score"] < 0:
-            verdict = "DOWNGRADE"
-            tags.append("news_risk")
-            size_multiplier = 0.5
-        if features["atr_pct"] >= 0.8:
-            verdict = "BLOCK"
-            tags.append("volatility_spike")
-            size_multiplier = 0.0
-        return {
-            "verdict": verdict,
-            "size_multiplier": size_multiplier,
-            "risk_tags": tags,
-            "short_reason": "deterministic stub decision",
-            "prompt_version": "v2.2.0",
-            "cache_hit": False,
-            "latency_ms": 0,
-            "is_fallback": False,
-            "stale_correlation": payload.get("stale_correlation", False),
+        headers = {
+            "x-api-key": self._api_key(),
+            "anthropic-version": self.config.api_version or "2023-06-01",
+            "content-type": "application/json",
         }
+        body: Dict[str, Any] = {
+            "model": self.config.model,
+            "max_tokens": self.config.max_output_tokens or 1024,
+            "temperature": 0,
+            "system": self.system_prompt,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": self._format_payload(payload),
+                        }
+                    ],
+                }
+            ],
+        }
+        data = await self._post_json(headers, body)
+        try:
+            content_blocks = data["content"]
+        except KeyError as exc:
+            raise ProviderResponseError("Claude response missing content") from exc
+        text_fragments = [
+            block.get("text", "")
+            for block in content_blocks
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        if not text_fragments:
+            raise ProviderResponseError("Claude response missing text block")
+        content = "".join(text_fragments)
+        return self._parse_content(content)
