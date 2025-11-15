@@ -6,7 +6,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import REGISTRY, generate_latest
-from prometheus_client.exposition import CONTENT_TYPE_LATEST
+
+try:  # pragma: no cover - import fallback
+    from prometheus_client.exposition import CONTENT_TYPE_LATEST
+except Exception:  # pragma: no cover - fallback for older/newer prometheus_client
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 
 from .config.loader import load_settings
 from .config.models import Settings

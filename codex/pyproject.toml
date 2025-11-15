@@ -15,7 +15,7 @@ dependencies = [
     "anyio==4.6.2.post1",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.3,<3",
-    "PyYAML>=6.0",
+    "PyYAML>=6.0.2,<7",
     "redis>=5.0",
     "fakeredis>=2.23",
     "prometheus-client>=0.20,<0.22",

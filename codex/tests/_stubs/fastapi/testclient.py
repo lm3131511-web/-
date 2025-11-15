@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 from typing import Any
 
 from . import FastAPI, Request
@@ -9,9 +10,18 @@ from .responses import Response as FastAPIResponse
 
 
 class Response:
-    def __init__(self, status_code: int, data: Any) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        data: Any,
+        *,
+        text: str = "",
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.status_code = status_code
         self._data = data
+        self.text = text if text else ("" if data is None else str(data))
+        self.headers = headers or {}
 
     def json(self) -> Any:
         return self._data
@@ -65,8 +75,21 @@ class TestClient:
             result = asyncio.run(result)
         if isinstance(result, FastAPIResponse):
             status_code = result.status_code
-            data = result.json()
+            media_type = getattr(result, "media_type", "") or "application/json"
+            headers = {"content-type": media_type}
+            if "json" in media_type:
+                data = result.json()
+                text = result.text if hasattr(result, "text") else json.dumps(data)  # type: ignore[name-defined]
+            else:
+                text = result.text if hasattr(result, "text") else ""
+                data = text
         else:
             status_code = 200 if not isinstance(result, Response) else result.status_code
-            data = result if not isinstance(result, Response) else result.json()
-        return Response(status_code, data)
+            headers = {}
+            if isinstance(result, Response):
+                data = result.json()
+                text = result.text
+            else:
+                data = result
+                text = str(result)
+        return Response(status_code, data, text=text, headers=headers)
