@@ -1,0 +1,26 @@
+{
+  "runtime": {
+    "environment": "live",
+    "quant_only_mode": false
+  },
+  "llm": {
+    "timeout_ms": 2500
+  },
+  "llm_risk": {
+    "distributed": {"url": "redis://redis:6379/0"},
+    "fallback": {
+      "enable_quant_only_after_failures": 3,
+      "max_size_multiplier": 0.3
+    }
+  },
+  "news": {
+    "providers": {
+      "twitter": {"enabled": true, "window_min": 60},
+      "reddit": {"enabled": true, "window_min": 75},
+      "news": {"enabled": true, "window_min": 120}
+    }
+  },
+  "risk_rules": {
+    "time_windows": {"deny": ["00:00-00:10Z", "23:50-23:59Z"]}
+  }
+}

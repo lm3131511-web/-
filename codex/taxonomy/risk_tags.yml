@@ -1,0 +1,7 @@
+risk_tags_definitions:
+  volatility_spike: "ATR% or spreads exceed configured thresholds"
+  news_risk: "Negative or uncertain sentiment confirmed by trusted sources"
+  correlation_risk: "High correlation with an existing portfolio position"
+  low_liquidity: "Wide spreads or low book depth"
+  stale_correlation: "Correlation inputs are stale and incur a size penalty"
+  llm_fallback: "LLM degraded, using conservative fallback size"

@@ -1,0 +1,158 @@
+{
+  "llm": {
+    "primary": "qwen",
+    "timeout_ms": "${LLM_TIMEOUT_MS:2500}",
+    "retry": {
+      "max": "${LLM_RETRY_MAX:1}",
+      "backoff_ms": "${LLM_RETRY_BACKOFF_MS:250}"
+    },
+    "max_ctx_tokens": 32000,
+    "output_json_schema": "prompts/schemas/llm_risk_assessment.schema.json",
+    "fallback_chain": ["deepseek", "claude"]
+  },
+  "providers": {
+    "qwen": {
+      "base_url": "${QWEN_BASE_URL:https://dashscope-intl.aliyuncs.com/compatible-mode/v1}",
+      "api_key_env": "QWEN_API_KEY",
+      "model": "${QWEN_MODEL:qwen-plus}",
+      "compatible_mode": true
+    },
+    "deepseek": {
+      "base_url": "${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "model": "${DEEPSEEK_MODEL:deepseek-chat}",
+      "compatible_mode": true
+    },
+    "claude": {
+      "base_url": "${ANTHROPIC_BASE_URL:https://api.anthropic.com}",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "model": "${ANTHROPIC_MODEL:claude-3-5-sonnet-latest}",
+      "api_version": "${ANTHROPIC_VERSION:2023-06-01}",
+      "compatible_mode": false,
+      "max_output_tokens": 1024
+    }
+  },
+  "runtime": {
+    "environment": "base",
+    "quant_only_mode": false,
+    "cold_start": false
+  },
+  "llm_risk": {
+    "cooldown_sec": 45,
+    "feature_fingerprint": {
+      "fields": ["regime", "rsi_14", "atr_pct", "spread_bps", "sentiment_score", "event_severity"],
+      "deltas": {
+        "rsi_14": 5.0,
+        "atr_pct": 0.3,
+        "spread_bps": 2.0,
+        "sentiment_score": 0.4,
+        "event_severity": 1
+      }
+    },
+    "cache": {
+      "ttl_sec": 240,
+      "max_items": 5000,
+      "persistence": {
+        "enabled": true,
+        "backend": "sqlite",
+        "path": "data/cache/codex_cache.db"
+      }
+    },
+    "distributed": {
+      "enabled": true,
+      "backend": "redis",
+      "url": "redis://redis:6379/0",
+      "lock_ttl_sec": 60,
+      "lock_acquire_timeout_ms": 500,
+      "lock_refresh_interval_ms": 10000
+    },
+    "fallback": {
+      "enable_quant_only_after_failures": 3,
+      "max_size_multiplier": 0.3
+    }
+  },
+  "news": {
+    "providers": {
+      "twitter": {
+        "enabled": true,
+        "max_items": 200,
+        "window_min": 90,
+        "trusted_sources": ["@binance", "@CoinDesk"],
+        "min_followers": 50000
+      },
+      "reddit": {
+        "enabled": true,
+        "max_items": 150,
+        "window_min": 90
+      },
+      "news": {
+        "enabled": true,
+        "max_items": 200,
+        "window_min": 180
+      }
+    },
+    "sanitizer": {
+      "max_chars": 2000,
+      "strip_urls": true,
+      "strip_mentions": true
+    },
+    "aggregation": {
+      "sentiment_confidence_threshold": 0.65,
+      "severity_confirm_min_sources": 2,
+      "severity_levels": ["none", "low", "med", "high"]
+    }
+  },
+  "risk_rules": {
+    "news": {
+      "high_event_block": true,
+      "high_event_min_confidence": 0.7,
+      "high_event_min_sources": 2
+    },
+    "volatility": {
+      "atr_pct_downgrade": 0.5,
+      "atr_pct_block": 0.8,
+      "spread_bps_block": 8.0
+    },
+    "time_windows": {
+      "deny": ["00:00-00:10Z"]
+    },
+    "correlation": {
+      "read_from_cache": true,
+      "block_if_correlated": true,
+      "rho_threshold": 0.8,
+      "stale_penalty_multiplier": 0.5
+    }
+  },
+  "signal_system": {
+    "analyst": {
+      "prompt": "prompts/system_signal_analyst_v1.0.0.md",
+      "schema": "prompts/schemas/signal_explanation.schema.json",
+      "version": "v1.0.0"
+    },
+    "meta_judge": {
+      "prompt": "prompts/system_meta_judge_v1.0.0.md",
+      "schema": "prompts/schemas/meta_judge.schema.json",
+      "version": "v1.0.0"
+    },
+    "strategies": {
+      "trend_follow": {
+        "timeframe": "M15",
+        "min_rsi": 56.0,
+        "max_spread_bps": 7.5,
+        "atr_stop_multiple": 1.25,
+        "atr_target_multiple": 2.2
+      },
+      "mean_reversion": {
+        "timeframe": "M30",
+        "oversold": 32.0,
+        "overbought": 68.0,
+        "atr_stop_multiple": 1.1,
+        "atr_target_multiple": 1.8
+      }
+    },
+    "consensus": {
+      "critical_event_severity": "high",
+      "min_agree": 2
+    }
+  }
+}

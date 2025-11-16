@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MetaJudgeDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "final_verdict",
+    "priority",
+    "warnings",
+    "llm_confidence",
+    "status_note",
+    "publish",
+    "annotations",
+    "recommended_tags",
+    "explanation"
+  ],
+  "properties": {
+    "final_verdict": {
+      "type": "string",
+      "enum": [
+        "BLOCK",
+        "DENY",
+        "DOWNGRADE",
+        "CONFIRM",
+        "UPGRADE",
+        "KILL_SWITCH"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high"]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 160
+      }
+    },
+    "llm_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "status_note": {
+      "type": "string",
+      "maxLength": 360
+    },
+    "publish": {
+      "type": "boolean"
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 64
+      }
+    },
+    "recommended_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 64
+      }
+    },
+    "explanation": {
+      "type": "string",
+      "maxLength": 800
+    }
+  }
+}

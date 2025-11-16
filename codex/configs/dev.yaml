@@ -1,0 +1,25 @@
+{
+  "runtime": {
+    "environment": "dev",
+    "quant_only_mode": false,
+    "cold_start": true
+  },
+  "llm": {
+    "timeout_ms": 4000
+  },
+  "llm_risk": {
+    "distributed": {"url": "redis://localhost:6379/0"},
+    "cache": {"persistence": {"path": "data/cache/codex_cache_dev.db"}}
+  },
+  "news": {
+    "providers": {
+      "twitter": {"enabled": false},
+      "reddit": {"enabled": false},
+      "news": {"max_items": 100}
+    },
+    "sanitizer": {"max_chars": 1200}
+  },
+  "risk_rules": {
+    "time_windows": {"deny": ["00:00-00:05Z"]}
+  }
+}

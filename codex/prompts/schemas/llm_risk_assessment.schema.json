@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RiskAssessment",
+  "type": "object",
+  "required": [
+    "verdict",
+    "size_multiplier",
+    "risk_tags",
+    "short_reason",
+    "prompt_version",
+    "cache_hit",
+    "latency_ms",
+    "is_fallback",
+    "stale_correlation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["CONFIRM", "DOWNGRADE", "BLOCK"]
+    },
+    "size_multiplier": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "risk_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "short_reason": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "prompt_version": {
+      "type": "string"
+    },
+    "cache_hit": {
+      "type": "boolean"
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "is_fallback": {
+      "type": "boolean"
+    },
+    "stale_correlation": {
+      "type": "boolean"
+    }
+  }
+}
