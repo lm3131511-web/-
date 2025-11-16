@@ -16,3 +16,6 @@ class MetaContext(BaseModel):
     mode: str = "live"
     portfolio_limited: bool = False
     open_correlation_rho: float | None = None
+    instrument: str = "UNKNOWN"
+    timeframe: str = "H1"
+    last_price: float | None = None

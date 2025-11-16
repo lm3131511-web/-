@@ -57,3 +57,18 @@ adapter_error_counter = Counter(
     "Provider adapter errors",
     labelnames=("provider",),
 )
+signals_generated_counter = Counter(
+    "codex_signals_generated_total",
+    "Signals emitted by deterministic strategies",
+    labelnames=("strategy",),
+)
+signals_published_counter = Counter(
+    "codex_signals_published_total",
+    "Signals released to operators",
+    labelnames=("status",),
+)
+signal_consensus_counter = Counter(
+    "codex_signal_consensus_total",
+    "Meta-judge verdict distribution",
+    labelnames=("result",),
+)

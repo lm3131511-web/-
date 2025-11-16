@@ -122,5 +122,37 @@
       "rho_threshold": 0.8,
       "stale_penalty_multiplier": 0.5
     }
+  },
+  "signal_system": {
+    "analyst": {
+      "prompt": "prompts/system_signal_analyst_v1.0.0.md",
+      "schema": "prompts/schemas/signal_explanation.schema.json",
+      "version": "v1.0.0"
+    },
+    "meta_judge": {
+      "prompt": "prompts/system_meta_judge_v1.0.0.md",
+      "schema": "prompts/schemas/meta_judge.schema.json",
+      "version": "v1.0.0"
+    },
+    "strategies": {
+      "trend_follow": {
+        "timeframe": "M15",
+        "min_rsi": 56.0,
+        "max_spread_bps": 7.5,
+        "atr_stop_multiple": 1.25,
+        "atr_target_multiple": 2.2
+      },
+      "mean_reversion": {
+        "timeframe": "M30",
+        "oversold": 32.0,
+        "overbought": 68.0,
+        "atr_stop_multiple": 1.1,
+        "atr_target_multiple": 1.8
+      }
+    },
+    "consensus": {
+      "critical_event_severity": "high",
+      "min_agree": 2
+    }
   }
 }

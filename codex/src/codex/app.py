@@ -16,6 +16,7 @@ from .contracts.sentiment import AggregatedSentiment
 from .llm_risk.client import LLMRiskClient
 from .monitoring.metrics import cache_hit_counter, fallback_counter, llm_latency, verdict_counter
 from .monitoring.health import router as health_router
+from .signals.system import SignalSystem
 
 app = FastAPI(title="codex-app", version="1.0.0")
 app.include_router(health_router, prefix="/healthz")
@@ -63,3 +64,15 @@ async def risk_endpoint(
         cache_hit_counter.labels(source="memory").inc()
     llm_latency.observe(assessment.latency_ms)
     return assessment.model_dump()
+
+
+@app.post("/signals")
+async def signals_endpoint(
+    features: DeterministicFeatures,
+    sentiment: AggregatedSentiment,
+    meta: MetaContext,
+):
+    settings = _load_settings()
+    system = SignalSystem(settings)
+    signals = await system.generate(features=features, sentiment=sentiment, meta=meta)
+    return [signal.model_dump() for signal in signals]

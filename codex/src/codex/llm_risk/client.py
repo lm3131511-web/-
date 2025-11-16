@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from typing import Dict, Iterable, List
+from typing import Dict, List
 
 from jsonschema import validate as jsonschema_validate
 
@@ -14,6 +14,7 @@ from ..contracts.sentiment import AggregatedSentiment
 from ..contracts.verdict import RiskAssessment
 from ..features.deltas import FingerprintEvaluator
 from ..features.selectors import FeatureSelector
+from ..llm.provider_registry import ProviderRegistry, build_registry, provider_order
 from ..llm_risk.cache import TTLCache
 from ..llm_risk.cache_persist import SQLiteCachePersistor, PersistedEntry
 from ..monitoring.metrics import (
@@ -32,21 +33,7 @@ from ..persistence.models import DecisionRecord
 from ..persistence.store import DecisionLog
 from ..utils.ids import fingerprint
 from ..utils.time import utc_now
-from .providers.base import LLMProvider
-from .providers.claude_sonnet import ClaudeSonnetProvider
-from .providers.deepseek import DeepSeekProvider
-from .providers.qwen import QwenProvider
 from .providers.errors import ProviderError, ProviderResponseError
-
-
-class ProviderRegistry:
-    def __init__(self, providers: Iterable[LLMProvider]) -> None:
-        self._providers = {provider.name: provider for provider in providers}
-
-    def get(self, name: str) -> LLMProvider:
-        if name not in self._providers:
-            raise KeyError(f"Provider {name} is not registered")
-        return self._providers[name]
 
 
 class LockManager:
@@ -70,7 +57,7 @@ class LLMRiskClient:
     ) -> None:
         self.settings = settings
         self.system_prompt = settings.prompt_path().read_text(encoding="utf-8")
-        self.registry = registry or self._build_registry()
+        self.registry = registry or build_registry(self.settings, self.system_prompt)
         cache_conf = settings.llm_risk.cache
         self.cache = cache or TTLCache[RiskAssessment](ttl_sec=cache_conf.ttl_sec, max_items=cache_conf.max_items)
         self.persistor = persistor or SQLiteCachePersistor(cache_conf.persistence.path)
@@ -259,13 +246,4 @@ class LLMRiskClient:
         return None, last_provider
 
     def _provider_order(self) -> List[str]:
-        order: List[str] = []
-        seen = set()
-        primary = self.settings.llm.primary
-        if primary not in self.settings.llm_providers:
-            raise KeyError(f"Primary provider '{primary}' is not configured")
-        for name in [primary, *self.settings.llm.fallback_chain]:
-            if name and name not in seen:
-                seen.add(name)
-                order.append(name)
-        return order
+        return provider_order(self.settings)

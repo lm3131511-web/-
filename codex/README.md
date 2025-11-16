@@ -45,6 +45,49 @@ curl -s http://localhost:8000/metrics | head
 
 В репозитории лежат `.gitkeep`, чтобы каталоги существовали в чистом клоне.
 
+## Signal system overview
+
+Codex now emits discretionary trade ideas through a three-stage LLM ensemble:
+
+1. **LLM-A – Risk Engine (Qwen → DeepSeek → Claude fallbacks)** screens deterministic features and sentiment to ensure
+   every candidate respects volatility/news/correlation gates.
+2. **LLM-B – Signal Analyst** receives the surviving candidate, validates SL/TP/timeframe, and produces a structured
+   explanation JSON for operators.
+3. **LLM-C – Meta-Judge** evaluates the risk verdict plus the explanation. During `event_severity="high"` it demands
+   consensus from at least two providers before approving publication.
+
+`POST /signals` takes the same payloads as `/risk` (features, sentiment, meta) and returns `FinalSignal` objects that
+include BUY/SELL, stop/take levels, risk verdict, consensus state, and human-friendly explanation text. Signals are
+logged to `data/logs/signals.jsonl` for audit trails.
+
+Example response:
+
+```json
+[
+  {
+    "instrument": "XAUUSD",
+    "timeframe": "M15",
+    "side": "buy",
+    "entry_price": 2650.5,
+    "stop_loss": 2642.0,
+    "take_profit": 2675.0,
+    "rr_ratio": 3.125,
+    "strategy_name": "trend_follow",
+    "strategy_confidence": 0.78,
+    "risk_verdict": "CONFIRM",
+    "llm_confidence": 0.68,
+    "risk_tags": ["news_risk"],
+    "explanation": "Momentum long remains valid; monitor liquidity",
+    "created_at": "2024-06-01T12:15:00Z",
+    "valid_until": "2024-06-01T13:45:00Z",
+    "risk_reason": "ATR cooling + trusted sources",
+    "status": "normal",
+    "publish": true,
+    "annotations": ["consensus_met"]
+  }
+]
+```
+
 ## Tests
 
 The suite covers unit, integration, stress, and property tests.

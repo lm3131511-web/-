@@ -130,6 +130,45 @@ class LLMProviderConfig(BaseModel):
     max_output_tokens: Optional[int] = None
 
 
+class TrendFollowStrategyConfig(BaseModel):
+    timeframe: str = "M15"
+    min_rsi: float = 55.0
+    max_spread_bps: float = 8.0
+    atr_stop_multiple: float = 1.2
+    atr_target_multiple: float = 2.0
+
+
+class MeanReversionStrategyConfig(BaseModel):
+    timeframe: str = "M30"
+    oversold: float = 30.0
+    overbought: float = 70.0
+    atr_stop_multiple: float = 1.0
+    atr_target_multiple: float = 1.5
+
+
+class SignalStrategiesConfig(BaseModel):
+    trend_follow: TrendFollowStrategyConfig = Field(default_factory=TrendFollowStrategyConfig)
+    mean_reversion: MeanReversionStrategyConfig = Field(default_factory=MeanReversionStrategyConfig)
+
+
+class PromptContractConfig(BaseModel):
+    prompt: str
+    schema: str
+    version: str = "v1.0.0"
+
+
+class ConsensusPolicyConfig(BaseModel):
+    critical_event_severity: str = "high"
+    min_agree: int = 2
+
+
+class SignalSystemConfig(BaseModel):
+    analyst: PromptContractConfig
+    meta_judge: PromptContractConfig
+    strategies: SignalStrategiesConfig = Field(default_factory=SignalStrategiesConfig)
+    consensus: ConsensusPolicyConfig = Field(default_factory=ConsensusPolicyConfig)
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -138,6 +177,7 @@ class Settings(BaseModel):
     llm_risk: LLMRiskConfig
     news: NewsConfig
     risk_rules: RiskRulesConfig
+    signal_system: SignalSystemConfig
     llm_providers: Dict[str, LLMProviderConfig] = Field(alias="providers")
 
     @property
@@ -155,6 +195,26 @@ class Settings(BaseModel):
         root = Path(__file__).resolve().parents[3]
         filename = f"system_risk_{self.prompt_version}.md"
         return root / "prompts" / filename
+
+    def analyst_prompt_path(self) -> Path:
+        return self._resolve_prompt_path(self.signal_system.analyst.prompt)
+
+    def analyst_schema_path(self) -> Path:
+        return self._resolve_prompt_path(self.signal_system.analyst.schema)
+
+    def meta_judge_prompt_path(self) -> Path:
+        return self._resolve_prompt_path(self.signal_system.meta_judge.prompt)
+
+    def meta_judge_schema_path(self) -> Path:
+        return self._resolve_prompt_path(self.signal_system.meta_judge.schema)
+
+    @staticmethod
+    def _resolve_prompt_path(relative: str) -> Path:
+        path = Path(relative)
+        if path.is_absolute():
+            return path
+        root = Path(__file__).resolve().parents[3]
+        return root / relative
 
     def get_llm_provider(self, name: str) -> LLMProviderConfig:
         if name not in self.llm_providers:
